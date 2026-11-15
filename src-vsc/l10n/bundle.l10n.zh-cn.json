@@ -1,0 +1,20 @@
+{
+  "New request": "新建请求",
+  "History": "历史",
+  "Settings": "设置",
+  "Untitled request": "未命名请求",
+  "media/index.html was not found. Run npm run build:vsc in the repository root.": "未找到 media/index.html。请先在仓库根目录执行 npm run build:vsc。",
+  "media/sidebar.html was not found. Run npm run build:vsc in the repository root.": "未找到 media/sidebar.html。请先在仓库根目录执行 npm run build:vsc。",
+  "Request not found": "请求不存在",
+  "History entry not found": "历史记录不存在",
+  "Unknown method: {0}": "未知方法：{0}",
+  "Request failed": "请求失败",
+  "Select files": "选择文件",
+  "Request body exceeds the 10 MB limit": "请求体超过 10MB 上限",
+  "Request timed out ({0}s)": "请求超时（{0}s）",
+  "Stream idle for {0}s; stopped receiving": "流式响应空闲超时（{0}s），已停止接收",
+  "Request cancelled": "请求已取消",
+  "Missing target URL": "缺少目标 URL",
+  "Uploaded file not found; please pick it again": "找不到要上传的文件，请重新选择",
+  "Imported from an older version; send again to see the response": "从旧版本导入，重新发送后才会显示响应"
+}

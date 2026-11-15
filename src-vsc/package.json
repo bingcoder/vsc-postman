@@ -1,0 +1,86 @@
+{
+  "name": "vsc-postman",
+  "displayName": "vsc-postman",
+  "description": "%extension.description%",
+  "version": "2.0.0",
+  "publisher": "breaking-point",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bingcoder/vsce-postman"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "l10n": "./l10n",
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:vsc-postman.sidebar",
+    "onCommand:vsc-postman.open"
+  ],
+  "main": "./extension.js",
+  "icon": "media/icon.png",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "vsc-postman",
+          "title": "vsc-postman",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "vsc-postman": [
+        {
+          "id": "vsc-postman.sidebar",
+          "type": "webview",
+          "name": "%view.sidebar.name%",
+          "contextualTitle": "vsc-postman"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "vsc-postman.open",
+        "title": "%command.open.title%",
+        "icon": "$(zap)"
+      },
+      {
+        "command": "vsc-postman.refresh",
+        "title": "%command.refresh.title%",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "vsc-postman.newRequest",
+        "title": "%command.newRequest.title%",
+        "icon": "$(add)"
+      },
+      {
+        "command": "vsc-postman.exportStorage",
+        "title": "%command.exportStorage.title%",
+        "icon": "$(export)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "vsc-postman.refresh",
+          "when": "view == vsc-postman.sidebar",
+          "group": "navigation@1"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "~5.9.2"
+  }
+}

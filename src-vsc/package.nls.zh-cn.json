@@ -1,0 +1,8 @@
+{
+  "extension.description": "VS Code 内的 HTTP 客户端：直接发送请求、查看响应，集中管理集合与请求历史。",
+  "view.sidebar.name": "集合与历史",
+  "command.open.title": "打开 vsc-postman",
+  "command.refresh.title": "刷新",
+  "command.newRequest.title": "新建请求",
+  "command.exportStorage.title": "导出存储为 JSON"
+}

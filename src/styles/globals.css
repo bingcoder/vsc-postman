@@ -1,0 +1,275 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Notion 风格设计令牌：柔和灰阶、克制圆角、无阴影；语义变量对齐 shadcn/ui。 */
+:root {
+  color-scheme: light;
+
+  --radius: 6px;
+
+  --background: #ffffff;
+  --sidebar: #f7f7f5;
+  --surface: #ffffff;
+  --surface-hover: #efefed;
+  --surface-selected: #e8e8e6;
+
+  --foreground: #37352f;
+  --muted-foreground: #787774;
+  --subtle-foreground: #9b9a97;
+
+  --card: #ffffff;
+  --card-foreground: #37352f;
+  --popover: #ffffff;
+  --popover-foreground: #37352f;
+  --secondary: #efefed;
+  --secondary-foreground: #37352f;
+  --muted: #efefed;
+  --accent: #efefed;
+  --accent-foreground: #37352f;
+
+  --primary: #37352f;
+  --primary-foreground: #ffffff;
+  --destructive: #d92d20;
+
+  --border: #e9e9e7;
+  --input: #e9e9e7;
+  --ring: #37352f;
+  --focus: #2383e2;
+
+  --sidebar-foreground: #37352f;
+  --sidebar-accent: #efefed;
+  --sidebar-border: #e9e9e7;
+
+  --scrollbar-thumb: #d4d4d4;
+
+  /* CodeMirror 高亮 */
+  --cm-key: #0a4f8c; /* 键名 */
+  --cm-string: #0a7d5b; /* 字符串 */
+  --cm-number: #7c3aed; /* 数字 */
+  --cm-bool: #c53030; /* 布尔 */
+  --cm-null: #787774; /* null */
+  --cm-punctuation: #9b9a97; /* 标点 */
+  --cm-invalid: #d92d20; /* 错误 */
+
+  /* 弹层阴影（普通卡片不用） */
+  --shadow-popover: 0 4px 12px rgba(15, 15, 15, 0.08), 0 1px 3px rgba(15, 15, 15, 0.04);
+
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --background: #191919;
+  --sidebar: #202020;
+  --surface: #252525;
+  --surface-hover: #2c2c2c;
+  --surface-selected: #333333;
+
+  --foreground: #e6e6e5;
+  --muted-foreground: #9b9a97;
+  --subtle-foreground: #777672;
+
+  --card: #252525;
+  --card-foreground: #e6e6e5;
+  --popover: #252525;
+  --popover-foreground: #e6e6e5;
+  --secondary: #2c2c2c;
+  --secondary-foreground: #e6e6e5;
+  --muted: #2c2c2c;
+  --accent: #2c2c2c;
+  --accent-foreground: #e6e6e5;
+
+  --primary: #e6e6e5;
+  --primary-foreground: #191919;
+  --destructive: #f87171;
+
+  --border: #373737;
+  --input: #373737;
+  --ring: #9b9a97;
+  --focus: #3b82f6;
+
+  --sidebar-foreground: #e6e6e5;
+  --sidebar-accent: #2c2c2c;
+  --sidebar-border: #373737;
+
+  --scrollbar-thumb: #4a4a4a;
+
+  /* CodeMirror 高亮（对齐 Dark+） */
+  --cm-key: #9cdcfe; /* 键名 */
+  --cm-string: #ce9178; /* 字符串 */
+  --cm-number: #b5cea8; /* 数字 */
+  --cm-bool: #569cd6; /* 布尔 */
+  --cm-null: #569cd6; /* null */
+  --cm-punctuation: #d4d4d4; /* 标点 */
+  --cm-invalid: #f44747; /* 错误 */
+
+  --shadow-popover: 0 4px 12px rgba(0, 0, 0, 0.36), 0 1px 3px rgba(0, 0, 0, 0.24);
+}
+
+/* VS Code Webview：宿主会在 body 上注入 vscode-light / dark / high-contrast 类名，
+   并暴露 --vscode-* 主题变量。此时底色不再使用内置配色，全部取自工作台主题。 */
+body.vscode-light,
+body.vscode-dark,
+body.vscode-high-contrast,
+body.vscode-high-contrast-light {
+  --background: var(--vscode-editor-background);
+  --sidebar: var(--vscode-sideBar-background, var(--vscode-editor-background));
+  --surface: var(--vscode-editor-background);
+  /* 叠层底色用前景色混合，避免 Dark Modern 下 editorWidget 与 editor 背景几乎同色而看不出层次。 */
+  --surface-hover: var(
+    --vscode-list-hoverBackground,
+    color-mix(in srgb, var(--vscode-editor-foreground) 10%, var(--vscode-editor-background))
+  );
+  --surface-selected: var(
+    --vscode-list-activeSelectionBackground,
+    var(--vscode-editor-selectionBackground, var(--vscode-editor-background))
+  );
+  --card: var(--vscode-editor-background);
+  --popover: var(--vscode-editorWidget-background, var(--vscode-editor-background));
+  --secondary: color-mix(
+    in srgb,
+    var(--vscode-editor-foreground) 9%,
+    var(--vscode-editor-background)
+  );
+  --muted: color-mix(in srgb, var(--vscode-editor-foreground) 9%, var(--vscode-editor-background));
+  --accent: color-mix(in srgb, var(--vscode-editor-foreground) 9%, var(--vscode-editor-background));
+  --sidebar-accent: var(
+    --vscode-list-hoverBackground,
+    color-mix(in srgb, var(--vscode-editor-foreground) 10%, var(--sidebar))
+  );
+  --scrollbar-thumb: var(--vscode-scrollbarSlider-background, rgba(128, 128, 128, 0.4));
+}
+
+/* 语义令牌 → Tailwind v4 工具类 */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-scrollbar-thumb: var(--scrollbar-thumb);
+
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-selected: var(--surface-selected);
+  --color-subtle-foreground: var(--subtle-foreground);
+  --color-focus: var(--focus);
+
+  --shadow-popover: var(--shadow-popover);
+
+  /* 圆角：sm=4 / md=6 / lg=8 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--background);
+  color: var(--foreground);
+  line-height: 1.6;
+}
+
+/* VS Code 侧边栏 Webview：宽度由工作台控制，不应触发 320px 最小宽度。 */
+body[data-vscode-sidebar] {
+  min-width: 0;
+  overflow: hidden;
+  background: var(--sidebar);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+/* 表单控件继承字体族；必须放 base 层，否则会压掉 utilities 的字号 / 字重。 */
+@layer base {
+  button,
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+    /* 回落父级字号，避免 UA 的 13.33px */
+    font-size: 100%;
+  }
+}
+
+/* focus 反馈由各组件 ring 承担 */
+input,
+textarea,
+select,
+button {
+  outline: none;
+}
+
+/* 未自定义 focus 的非表单元素兜底轮廓 */
+:where(a, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* 分栏手柄自行绘制焦点反馈；须在 layer 之外才能覆盖上面的兜底规则 */
+[role='separator'][aria-orientation='horizontal']:focus-visible {
+  outline: none;
+}
+
+/* 尊重 prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* CodeMirror 容器微调；外观主题见 codemirror-theme.ts */
+.cm-editor {
+  font-size: 12px;
+}
+
+.cm-scroller {
+  font-family:
+    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+}

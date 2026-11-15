@@ -1,0 +1,8 @@
+{
+  "extension.description": "HTTP client for VS Code: send REST requests, inspect responses, and manage collections and request history.",
+  "view.sidebar.name": "Collections & History",
+  "command.open.title": "Open vsc-postman",
+  "command.refresh.title": "Refresh",
+  "command.newRequest.title": "New request",
+  "command.exportStorage.title": "Export storage as JSON"
+}
