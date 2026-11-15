@@ -38,3 +38,6 @@ yarn-error.log*
 # 打包产物
 *.vsix
 vsc-postman-chrome-*.zip
+vsc-postman-edge-*.zip
+out/
+release-notes.md

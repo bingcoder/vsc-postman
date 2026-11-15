@@ -1,193 +1,154 @@
-# 发布自动化方案（push master → 升版本 → 发 VS Code / Edge 市场）
+# 发布流水线（push master → 自动发版 → VS Code 市场 + Edge 人工上传包）
 
-## 1. 现状盘点
+> 本文件是**已实现流水线**的说明书。代码：`.github/workflows/release.yml`、`scripts/release-bump.mjs`、`scripts/package-chrome.mjs`、`scripts/version.mjs`、`scripts/package-vsix.sh`。
 
-| 项目             | 现状                                                                                             | 影响                                                         |
-| ---------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| 远端             | `git remote -v` 为空，只有本地 `master`                                                          | 没有远端就没有「push 触发」，CI 是前置条件                   |
-| CI               | 无 `.github/`、无任何流水线配置                                                                  | 全部新建                                                     |
-| 版本号           | 3 处重复：`package.json`、`src-vsc/package.json`、`src-chrome/manifest.json`，当前均为 `0.1.1`   | 必须收敛为单一来源，否则三个产物版本会漂移                   |
-| VS Code 打包     | `scripts/package-vsix.sh`（依赖全局 `vsce` 1.88.0），产物 `dist-vsc/`                            | 可复用，但需改成 CI 内 `npx @vscode/vsce`               |
-| Chrome/Edge 打包 | 只有 `npm run build:chrome` 产出 `dist-chrome/`，**没有打 zip 的脚本**                              | 需要新增打包脚本（Edge 上传要 zip）                          |
-| publisher        | `src-vsc/package.json` 里是 `"publisher": "local"`                                               | 未改成真实 publisher 前无法发市场                            |
-| 依赖安装         | 根目录与 `src-vsc/` 是**两套独立依赖**（`src-vsc` 有自己的 `package-lock.json`，无 workspace 配置） | CI 必须装两次：`npm install` + `npm --prefix src-vsc install`    |
-| 扩展状态         | README 写「尚未正式发布」，Marketplace 与 Edge 都还没上架                                        | VS Code 与 Edge 都要先完成**首次人工发布**，之后才谈自动更新 |
-| README 分工      | 根 README 面向仓库；`src-vsc/README.md` 打包为市场页正文；`src-chrome/README.md` 随 zip 发布     | 三份文案需同口径，市场版不能用相对链接/SVG                   |
-
-## 2. 目标链路
+## 1. 一句话链路
 
 ```
-git push origin master
-        │
-        ▼
-  CI：判断该不该发版（语义化提交）
-        │  否 → 结束（不打扰市场）
-        ▼ 是
-  升版本号（3 个文件一次改完）→ 构建 → 校验产物
-        │
-        ├─→ vsce publish          → VS Code Marketplace（即时生效，无审核）
-        └─→ 打 zip → 上传 Edge Add-ons（有审核，最长 7 个工作日）
-        │
-        ▼
-  自动提交 chore(release): v0.x.y + 打 tag + GitHub Release 挂产物
+push master
+   │
+   ▼
+prepare  读「上个 tag 之后的提交」→ 决定 bump（feat / fix / perf / 破坏性）→ 算出 vX.Y.Z
+   │                                                   │ 无可发布内容 → 整条流水线结束
+   ▼
+build    写三处版本号 → 构建 → 打包 .vsix + Edge zip → 校验 → 发 VS Code 市场（OIDC）
+   ▼
+tag      回写版本提交 → 打 vX.Y.Z → 建 GitHub Release
+         （附件：vsc-postman-X.Y.Z.vsix、vsc-postman-edge-X.Y.Z.zip）
+                                   │
+                                   ▼
+                        人工：Partner Center 上传 zip → Publish（约 2 分钟）
 ```
 
-## 3. 必须先说清的一条硬限制：Edge 目前不能真正「自动发布」
+**VS Code 全自动，Edge 半自动**：CI 保证「包一定是对的、版本一定没漂」，Edge 侧只剩一次拖拽上传。
 
-查过官方文档（`learn.microsoft.com/microsoft-edge/extensions/publish/publish-extension`，2026-08-12 更新）：Edge Add-ons 的发布流程**全程是 Partner Center 网页操作**——上传 zip、填 Availability/Properties/Privacy/Store listings、点 Publish 进审核。官方没有对外公开的提交 API（Chrome Web Store 有，Edge 没有）。
+## 2. 什么时候会发版
 
-所以「自动发布到 Edge」只有三种落地方式，建议选 A：
+默认按 Conventional Commits 判断，**不做「每个 commit 都发」**（否则市场会被历史提交灌满版本）：
 
-| 方案                                 | 做法                                                                                                | 评价                                                                 |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| **A. 自动备包 + 人工点上传（推荐）** | CI 产出 `vsc-postman-edge-x.y.z.zip` 挂到 GitHub Release，你打开 Partner Center 拖拽上传，约 2 分钟 | 稳、不违规、零维护；发布节奏仍由 CI 保证「包一定是对的」             |
-| B. Playwright 硬自动化               | 自托管 runner + 持久化登录态，脚本模拟点击上传                                                      | 能跑，但 2FA/cookie 会过期、页面改版即挂、有违反商店条款风险，不建议 |
-| C. 只自动 VS Code，Edge 完全手动     | 最省事                                                                                              | 版本号仍需人工同步                                                   |
+| 提交特征                                                                | 动作   |
+| ----------------------------------------------------------------------- | ------ |
+| `feat!:` / 正文含 `BREAKING CHANGE`                                     | major  |
+| `feat:`                                                                 | minor  |
+| `fix:` / `perf:`                                                        | patch  |
+| `docs:` `chore:` `style:` `test:` `ci:` `refactor:` `build:` `release:` | 不发版 |
+| 无前缀                                                                  | 不发版 |
 
-> 注意：首次提交必须人工走完整 listing 流程（截图、logo、隐私政策、权限理由）。**通过一次之后**，后续更新才只是「上传 zip → Publish」。
+手动覆盖：`workflow_dispatch` 的 `bump` 可选 `auto / patch / minor / major`。
 
-VS Code 侧则是真·全自动：`vsce publish` 用 Azure DevOps PAT，发布即时生效、不需要审核队列。
+防呆两条：
 
-## 4. 版本号策略
+- **不循环**：tag job 的提交信息带 `[skip ci]`，且下一轮的计算范围从新 tag 之后开始，天然为空。
+- **可刹车**：`dry_run=true`（默认值）只构建校验不发市场、不打 tag；仓库变量 `VSC_PUBLISH=false` 单独关掉 VS Code 发布。
 
-**单一来源 = 根 `package.json` 的 `version`**，其余两处由脚本写入。
+## 3. 版本号：仍然只有一处权威
 
-新增 `scripts/version.mjs` 三个子命令：
+`package.json` 的 `version` 是唯一来源，`scripts/version.mjs set` 一次写三处：
 
-```bash
-npm run version:check          # 校验三处一致，不一致直接 exit 1（CI 与 pre-commit 都用）
-npm run version:set 0.2.0      # 一次写三处
-npm run version:bump patch      # patch | minor | major，基于当前版本自增
-```
+| 文件                       | 为什么必须同步                  |
+| -------------------------- | ------------------------------- |
+| `package.json`             | 权威值，`release-bump.mjs` 读它 |
+| `src-vsc/package.json`     | 打进 `.vsix`，市场按它判断版本  |
+| `src-chrome/manifest.json` | Edge zip 的版本，重复会被拒收   |
 
-目标文件：
+`release-bump.mjs` 只**算**不写，`version.mjs` 只**写**不算，职责分离。版本格式受商店约束：1~4 段点分整数，每段 0–65535，无前导零。
 
-- `package.json` → `version`
-- `src-vsc/package.json` → `version`（`build-vsc.mjs` 会把它复制进 `dist-vsc/`）
-- `src-chrome/manifest.json` → `version`（vite 插件在 `closeBundle` 时复制进 `dist-chrome/`，所以**必须在 build 之前**改）
+## 4. VS Code Marketplace（全自动）
 
-版本格式约束（Edge/Chrome 比 npm 严）：1~4 段点分整数，每段 0–65535，不能有前导零。`0.1.2` 这种三段式两者都合法，保持现状即可。
-
-## 5. 触发与 bump 规则
-
-**不建议**「每次 commit 都发一版」——这个仓库已经有 30 个 commit，等于 30 次公开发版，且 docs/样式微调都会触发。推荐按语义化提交判断：
-
-| 提交类型                                            | 动作                         |
-| --------------------------------------------------- | ---------------------------- |
-| `feat:`                                             | minor +1（如 0.1.2 → 0.2.0） |
-| `fix:` / `perf:`                                    | patch +1                     |
-| `feat!:` / `BREAKING CHANGE`                        | major +1                     |
-| `docs:` `chore:` `style:` `test:` `ci:` `refactor:` | 不发版                       |
-| 无匹配前缀                                          | 不发版（宁可漏发，不要误发） |
-
-三种节奏可选，方案默认第二种：
-
-1. **全自动**：任何 push 都 patch +1 发布 —— 改动最省心，噪音最大。
-2. **语义化自动（推荐）**：CI 读提交信息决定 bump，无可发布内容就跳过。
-3. **手动闸门**：平时 push 只跑构建校验，只有打 `v*` tag 才真正发布 —— 最可控，但要多一步。
-
-另外两个细节：
-
-- **防死循环**：GitHub Actions 用 `GITHUB_TOKEN` 推的 commit **不会**再触发 workflow，天然不循环；再加 `chore(release): v0.x.y [skip ci]` 和 job 级 `if` 兜底。
-- **分支保护**：如果 `master` 开了保护规则，bot 推不回去，此时退化为「只打 tag，不回写 master」，版本号在 CI 里临时改、不提交。方案里把这点做成配置开关。
-
-## 6. 分阶段实施
-
-### P0 前置账号（一次性，只能人工）
-
-1. VS Code：注册 Azure DevOps 组织 → 创建 Marketplace 的 publisher（ID 比如 `your-pub-id`）→ 生成 PAT（Marketplace → Manage 权限）。
-2. 改 `src-vsc/package.json`：`"publisher"` 换成真实 ID，补 `"repository"`（否则每次都得带 `--allow-missing-repository`），名称建议统一成市场里的 `vsc-postman`。
-3. Edge：Partner Center 注册（须用 @outlook/@live/@hotmail 的 MSA）→ 首次提交完整 listing，拿到 product ID。
-4. 把 VSIX 和 Edge zip 各人工发一次，确认市场侧链路通。
-
-### P1 版本号单一来源（0.5 天）
-
-- 新增 `scripts/version.mjs`（check / set / bump）。
-- 在 `package-vsix.sh`、`build-vsc.mjs`、`src-chrome/vite.config.ts` 前加 `version:check` 断言。
-- ✅ 打包瑕疵已修：`build-vsc.mjs` 现在会把 `src-vsc/README.md`（扩展专版）、根 `LICENSE`、`CHANGELOG.md` 复制进 `dist-vsc/`；`src-chrome/vite.config.ts` 会把 `src-chrome/README.md` 复制进 `dist-chrome/`。
-
-### P2 打包产物统一（0.5 天）
-
-- `npm run package:vsix` 保持，内部改用 `npx @vscode/vsce`，不再依赖全局安装。
-- 新增 `scripts/package-chrome.mjs`：把 `dist-chrome/` **内容**打成 `vsc-postman-edge-<version>.zip`，**manifest.json 必须在 zip 根目录**（不能有外层文件夹），并校验 zip 内存在 `manifest.json` / `background.js` / `app.html`。
-- `package.json` 加脚本：`package:chrome`、`release:dry`。
-
-### P3 CI 流水线（1~2 天）
-
-新增 `.github/workflows/release.yml`：
+用 **Trusted Publishing（GitHub OIDC）**，不存任何长期凭据：
 
 ```yaml
-name: release
-on:
-  push: { branches: [master] }
-  workflow_dispatch:
-    inputs:
-      dry_run: { type: boolean, default: true } # 首次务必先跑 dry_run
-permissions:
-  contents: write
-concurrency: { group: release, cancel-in-progress: false }
-
-jobs:
-  release:
-    if: "!contains(github.event.head_commit.message, '[skip ci]')"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 } # 需要历史算 bump 和 tag
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: npm }
-      - run: npm ci
-      - run: npm --prefix src-vsc ci # 独立的第二套依赖（package-lock 在 src-vsc/）
-      - run: node scripts/release-bump.mjs >> $GITHUB_OUTPUT # 算 next version，无则 skip
-      # ... 构建 → vsce package → vsce publish → build:chrome → package:chrome
-      # ... git commit + tag + push → gh release create（挂 vsix + edge zip）
+permissions: { id-token: write }
+# 在 dist-vsc 下执行，publisher 取自 package.json
+npx @vscode/vsce publish --oidc --packagePath …/vsc-postman-X.Y.Z.vsix
 ```
 
-要点：
+几个必须知道的细节：
 
-- `fetch-depth: 0`，否则算不出「上个 tag 之后的提交」。
-- bump 与发布拆成两个 job 更安全：`build-and-verify` 先过（`vsce ls` 校验包内容、`unzip -l` 校验 zip），再进 `publish`。
-- `dry_run` 默认 true，第一次跑只出产物不发市场。
-- 产物（`.vsix` / `.zip`）通过 `actions/upload-artifact` + Release 附件双份留存，Edge 那 2 分钟人工上传就从 Release 下载。
+- **PAT 已经不能用**：Azure DevOps 的全局 PAT 在 **2026-12-01 退役**，靠 `VSCE_PAT` 的流水线到期后会静默失败，所以这里直接用 OIDC。
+- 需要先在 Marketplace publisher 页 → **Trusted Publishing** 建策略：Repository owner `bingcoder`、Repository `vsc-postman`、Workflow `release.yml`、Environment `production`（必须与 workflow 里的 `environment: production` 一致，否则 OIDC 主体对不上）。
+- Marketplace 凭据 15 分钟有效，每个 OIDC token 只能用一次 → 发布步骤失败要重跑整个 job，不能「续跑」。
+- 打包传了 `--githubBranch master`：vsce 会按仓库默认分支改写 README 里的相对链接，本仓库默认分支是 `master` 而不是 `main`。
+- **Environment 必须两边一致**：workflow 里写的是 `environment: production`，策略里 Environment 就填 `production`；如果你不想用环境审批，把 workflow 里那一行删掉，策略里也留空。
+- 打包前有校验：README 里出现相对图片路径会直接失败（市场页不解析相对路径，会裂图）。
 
-### P4 Edge 半自动（0.5 天，可选）
+## 5. Edge Add-ons（CI 出包，人工上传）
 
-- Release 正文模板里固定放：版本号、变更摘要（从 commit 生成）、zip 直链、Partner Center 链接。
-- 如果之后微软放出提交 API（或你用方案 B），只替换这一段即可，其余链路不动。
+官方确实有 Add-ons REST API（v1.1，`api.addons.microsoftedge.microsoft.com`），但它能做的很有限，所以这里**不接自动提交**：
 
-### P5 验收与回滚
+| 限制                                                    | 后果                                  |
+| ------------------------------------------------------- | ------------------------------------- |
+| 只能更新**已存在**的产品，不能创建新产品                | 首次上架无论如何都得走 Partner Center |
+| 不能改商店元数据（描述、截图、权限理由）                | 改文案仍要网页操作                    |
+| 上传/提交是异步操作，要轮询 operationId                 | 流水线要加轮询、超时、重试逻辑        |
+| 上一次提交仍在审核时再次提交会报 `InProgressSubmission` | 自动重试无意义，仍需人判断            |
 
-- 验收：一次 `feat:` 提交 → 版本变 0.2.0 → 市场可见新版本 → Edge zip 命名正确 → tag 与 Release 齐全 → 再次 push 空改动不触发发布。
-- 回滚：VS Code 不能「撤回」已发布版本（只能发更高的新版，或 `vsce unpublish` 极不推荐）；Edge 可在 Partner Center 停止分发。所以 **dry_run + 产物校验** 是唯一保险。
+权衡结果：CI 产出**已校验的 zip**（`manifest.json` 在根目录、版本三处一致、体积打印），挂到 Release；人工上传约 2 分钟，零维护、不引入 Client ID / API Key 这类会过期的凭据。
 
-## 7. 需要配置的凭据
+打包脚本：`npm run package:chrome` → `out/vsc-postman-edge-<version>.zip`，内部会校验：
 
-> **2026-12-01 起 Azure DevOps 全局 PAT 退役**，靠 `VSCE_PAT` 的流水线会在到期后静默失败。首发前就把发布方式换成 Marketplace Trusted Publishing（GitHub OIDC），不要再新建 PAT。
+- `manifest.json` / `background.js` / `app.html` / `icon.png` 都在 zip **根目录**；
+- 没有外层文件夹（`dist-chrome/manifest.json` 这种会被商店拒收）；
+- 版本号是 1~4 段点分整数。
 
-| 名称                    | 用途                         | 备注                                                                                                                       |
-| ----------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Trusted Publishing 策略 | `vsce publish --oidc`        | 在 Marketplace 管理页为「发布者 + 仓库 + workflow 文件名」建策略；job 需 `permissions: id-token: write`，token 15 分钟有效 |
-| `VSCE_PAT`（仅过渡期）  | 旧式 `vsce publish`          | 仅在 Trusted Publishing 未配好时临时使用，2026-12-01 后不可用                                                              |
-| `GITHUB_TOKEN`          | 回写版本 commit / 建 Release | 内置，只需 `permissions: contents: write`                                                                                  |
-| Edge                    | 无（人工上传）               | 若走方案 B 另需 MSA 登录态，不推荐                                                                                         |
+> 注意：这个 zip 同时也是「加载解压的扩展」用的产物，但**不发布到 Chrome Web Store**，本期只面向 Edge。
 
-## 8. 风险清单
+## 6. 需要配置的东西
 
-1. **发布即公开且不可撤回** —— 误发只能靠更高版本覆盖，故默认 `dry_run`、默认跳过非功能性提交。
-2. **三个版本号漂移** —— 一旦 `manifest.json` 忘改，Edge 会以「版本已存在」拒绝上传；`version:check` 前置拦截。
-3. **`src-vsc` 双依赖树** —— CI 少装一次就编译失败，已写进流水线。
-4. **PAT 过期** —— 建议日历提醒，或改用 GitHub Environment + 定期轮换。
-5. **Edge 审核延迟（最长 7 个工作日）** —— 两个市场必然不同步，Release 里注明。
+### 仓库 Secrets
 
-## 9. 工作量
+| 名称           | 用途                      | 必填           |
+| -------------- | ------------------------- | -------------- |
+| `GITHUB_TOKEN` | 回写版本提交 / 建 Release | 内置，无需配置 |
 
-| 阶段     | 产出                                   | 估时                                    |
-| -------- | -------------------------------------- | --------------------------------------- |
-| P0       | 账号、publisher、首次人工发布          | 半天（含审核等待）                      |
-| P1       | `scripts/version.mjs`                  | 0.5 天                                  |
-| P2       | `scripts/package-chrome.mjs`、打包改造 | 0.5 天                                  |
-| P3       | `release.yml` + release-bump 脚本      | 1–2 天                                  |
-| P4       | Release 模板                           | 0.5 天                                  |
-| **合计** |                                        | **约 3–4 个工作日**（不含商店审核等待） |
+### 仓库 Variables（可选）
 
-按方案 A（Edge 人工 2 分钟），VS Code 侧从「push」到「市场可见」约 3–5 分钟；Edge 侧从点上传到通过审核 1–7 个工作日。
+| 名称          | 值      | 作用                  |
+| ------------- | ------- | --------------------- |
+| `VSC_PUBLISH` | `false` | 临时关闭 VS Code 发布 |
+
+### 平台侧（一次性，只能人工点）
+
+1. **VS Code Trusted Publishing**：<https://marketplace.visualstudio.com/manage> → 打开 publisher `breaking-point` → **Trusted Publishing** → Create：
+   - Repository owner：`bingcoder`
+   - Repository：`vsc-postman`
+   - Workflow：`release.yml`
+   - Environment：`production`
+2. **Edge Partner Center**：用 @outlook / @live / @hotmail 的 MSA 注册，首次提交完整 listing（截图、logo、隐私政策、权限理由）。**首次必须网页完成**，之后每次更新只需在 Packages 页上传 zip。
+3. **分支保护**：若 master 禁止 bot 推送，tag job 会自动退化为「只在远端打 tag」，版本以 tag 为准，不阻塞发布。
+4. **Actions 写权限**：Settings → Actions → General → Workflow permissions 选 **Read and write**（否则 tag job 推不回 master、建不了 Release）。
+
+## 7. 第一次怎么跑
+
+```bash
+# 1) 本地先验证打包与版本判定（不发任何请求）
+npm run package:chrome      # out/vsc-postman-edge-<version>.zip
+npm run release:bump        # 看它算出什么版本、什么理由
+
+# 2) 推一个 DRY RUN：Actions → release → Run workflow，dry_run=true
+#    产出 vsix + zip，不发市场、不打 tag；检查 job summary 与产物
+
+# 3) 正式发一次：dry_run=false，bump=patch
+#    之后每次 push 就按提交类型自动发版；Edge 那一步从 Release 下载 zip 手动上传
+```
+
+## 8. 出问题怎么处理
+
+| 现象                         | 含义 / 处理                                                                        |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| 流水线直接跳过、没有 Release | 这次提交里没有 feat/fix/perf —— 设计如此；要强发用 dispatch + `bump=patch`         |
+| `vsce publish` 失败          | Trusted Publishing 策略的 workflow 名 / environment 与本仓库不一致；或该版本已发布 |
+| 市场拒收该版本               | manifest 版本与线上重复 —— `version.mjs check` 会提前拦住                          |
+| Edge 上传报「版本已存在」    | 版本号没递增，或上次已上传同版本；CI 的版本一致性校验就是为了防这个                |
+| 需要撤回                     | VS Code 不能撤回，只能发更高版本；Edge 可在 Partner Center 停止分发                |
+| master 推不上去              | 分支保护挡住了 bot；tag 与 Release 仍会生成                                        |
+
+## 9. 与早期方案的不同
+
+唯一实质变化是 **VS Code 发布从 `VSCE_PAT` 换成 GitHub OIDC**：PAT 2026-12-01 退役，不换就会在到期后静默失败。Edge 仍然是「CI 出包 + 人工上传」，与早期判断一致。
+
+## 参考
+
+- [Publishing Extensions / Secure automated publishing](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace)
+- [Trusted Publishing for Visual Studio Marketplace](https://developer.microsoft.com/blog/trusted-publishing-visual-studio-marketplace/)
+- [Use the REST API to update an extension（Edge，备用参考）](https://learn.microsoft.com/en-us/microsoft-edge/extensions/update/api/using-addons-api)
