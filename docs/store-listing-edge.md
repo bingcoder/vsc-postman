@@ -98,8 +98,8 @@ http client, rest client, api testing, postman alternative, sse, no login, offli
 | 字段            | 值                                            |
 | --------------- | --------------------------------------------- |
 | Category        | Developer tools                               |
-| Website         | `https://github.com/bingcoder/vsce-postman`        |
-| Support contact | `https://github.com/bingcoder/vsce-postman/issues` |
+| Website         | `https://github.com/bingcoder/vsc-postman`        |
+| Support contact | `https://github.com/bingcoder/vsc-postman/issues` |
 | Mature content  | 否                                            |
 | Visibility      | Public                                        |
 | Markets         | 全部                                          |
@@ -129,7 +129,7 @@ content scripts, does not read page content, and does not issue background or pe
 网页浏览历史、用户活动、网站内容）。勾选并确认「I certify that the following disclosures are true」。
 若表单强制要求至少选择一项，请勿臆造：先核对本扩展是否真的读取了对应数据（当前实现不会）。
 
-**Privacy policy URL** — 托管后的 `docs/privacy.md` 地址（如 `https://bingcoder.github.io/vsce-postman/privacy`）。
+**Privacy policy URL** — 托管后的 `docs/privacy.md` 地址（如 `https://bingcoder.github.io/vsc-postman/privacy`）。
 
 ## 7. Notes for certification
 
@@ -154,4 +154,4 @@ No external services other than the URL typed by the user are contacted.
 - [ ] Description 与 `docs/privacy.md`、根 README「隐私与数据」章节无矛盾
 - [ ] 截图里的 UI 文案语言与提交语言一致
 - [ ] zip 根目录含 `manifest.json` / `background.js` / `app.html` / `icon.png`
-- [x] `OWNER` 占位符已全部替换（仓库地址：`bingcoder/vsce-postman`）
+- [x] `OWNER` 占位符已全部替换（仓库地址：`bingcoder/vsc-postman`）

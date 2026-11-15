@@ -7,12 +7,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bingcoder/vsce-postman.git"
+    "url": "git+https://github.com/bingcoder/vsc-postman.git"
   },
   "bugs": {
-    "url": "https://github.com/bingcoder/vsce-postman/issues"
+    "url": "https://github.com/bingcoder/vsc-postman/issues"
   },
-  "homepage": "https://github.com/bingcoder/vsce-postman#readme",
+  "homepage": "https://github.com/bingcoder/vsc-postman#readme",
   "engines": {
     "node": ">=20.19.0"
   },

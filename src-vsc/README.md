@@ -35,15 +35,15 @@
 - 请求从你的机器直接发往你填写的地址；扩展不做后台联网。
 - Headers 可能包含 Token，且为明文存储；`form-data` 只记录文件元信息，不保存文件内容。
 - 当前只有导出、没有导入；换设备前请先导出。
-- 完整说明：[Privacy & data handling](https://github.com/bingcoder/vsce-postman/blob/main/docs/privacy.md)
+- 完整说明：[Privacy & data handling](https://github.com/bingcoder/vsc-postman/blob/main/docs/privacy.md)
 
 ## 反馈
 
-问题与建议：[Issues](https://github.com/bingcoder/vsce-postman/issues)
+问题与建议：[Issues](https://github.com/bingcoder/vsc-postman/issues)
 
 ## License
 
-[MIT](https://github.com/bingcoder/vsce-postman/blob/main/LICENSE)
+[MIT](https://github.com/bingcoder/vsc-postman/blob/main/LICENSE)
 
 ---
 
@@ -84,12 +84,12 @@ Most API debugging tools assume you will register an account and sync your colle
 - Requests go straight from your machine to the URL you typed; the extension makes no background network calls.
 - Headers may contain tokens and are stored in plain text; `form-data` only records file metadata, never file contents.
 - Currently export-only, no import; export before switching machines.
-- Full details: [Privacy & data handling](https://github.com/bingcoder/vsce-postman/blob/main/docs/privacy.md)
+- Full details: [Privacy & data handling](https://github.com/bingcoder/vsc-postman/blob/main/docs/privacy.md)
 
 ## Feedback
 
-Questions and suggestions: [Issues](https://github.com/bingcoder/vsce-postman/issues)
+Questions and suggestions: [Issues](https://github.com/bingcoder/vsc-postman/issues)
 
 ## License
 
-[MIT](https://github.com/bingcoder/vsce-postman/blob/main/LICENSE)
+[MIT](https://github.com/bingcoder/vsc-postman/blob/main/LICENSE)

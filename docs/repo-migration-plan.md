@@ -1,6 +1,6 @@
 # 老仓库切换与代码迁移计划
 
-> 目标仓库：`demo/vsce-postman`（`https://github.com/bingcoder/vsce-postman.git`）
+> 目标仓库：`demo/vsce-postman`（`https://github.com/bingcoder/vsc-postman.git`）
 > 代码来源：`demo/vsc-postman-new`（2.0.0）
 > 本文只描述步骤，**尚未执行任何仓库操作**。
 
@@ -26,7 +26,7 @@
 | 远端 | 可访问，`git ls-remote` 正常返回 |
 | `core.autocrlf` | `input`（不会发生 CRLF 转换，`read-tree` 安全） |
 | 已跟踪产物 | `build/`、`dist/` 被纳入版本库（新仓库是忽略的） |
-| 问题 | 根 `package.json` 的 `repository/homepage/bugs` 指向 `breaking-point/vsce-postman`，与实际远端 `bingcoder/vsce-postman` 不一致 |
+| 问题 | 根 `package.json` 的 `repository/homepage/bugs` 指向 `breaking-point/vsce-postman`，与实际远端 `bingcoder/vsc-postman` 不一致 |
 
 ### 1.2 关键发现：市场上跑的是 1.1.0，仓库里是 1.0.0
 
@@ -386,7 +386,7 @@ git push origin v2.0.0
 
 ## 13. 迁移完成后立即要做的事（备忘）
 
-- [ ] 删掉老仓库根目录遗留的 `breaking-point` 链接（`repository/homepage/bugs` 已由新 `package.json` 覆盖为 `bingcoder/vsce-postman`）
+- [ ] 删掉老仓库根目录遗留的 `breaking-point` 链接（`repository/homepage/bugs` 已由新 `package.json` 覆盖为 `bingcoder/vsc-postman`）
 - [ ] 确认 `dist-vsc/`、`dist/`、`dist-chrome/`、`node_modules/`、`.npm-cache/`、`*.vsix` 都在 `.gitignore` 里，且 `git status` 干净
 - [ ] 在 GitHub Release 里同时挂 `vsc-postman-2.0.0.vsix`
 - [ ] 更新市场页正文（取自 `dist-vsc/README.md`）
