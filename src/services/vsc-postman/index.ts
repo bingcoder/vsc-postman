@@ -1,5 +1,5 @@
 import { detectRuntime } from '@/lib/runtime'
-import { ChromeTransport } from '@chrome/chrome-transport'
+import { ExtensionTransport } from '@extension/extension-transport'
 import { DEV_PROXY_PATH } from './constants'
 import { DevProxyTransport } from './dev-proxy-transport'
 import { FetchTransport } from './fetch-transport'
@@ -12,7 +12,7 @@ let instance: HttpTransport | null = null
 export function createHttpTransport(): HttpTransport {
   const runtime = detectRuntime()
   if (runtime === 'vscode-webview') return new VscodeTransport()
-  if (runtime === 'browser-extension') return new ChromeTransport()
+  if (runtime === 'browser-extension') return new ExtensionTransport()
 
   const configuredProxy = import.meta.env.VITE_HTTP_PROXY_URL?.trim()
   if (configuredProxy) return new DevProxyTransport(configuredProxy)

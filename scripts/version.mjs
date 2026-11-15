@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * 版本号单一来源：根 package.json 的 version 是唯一权威值，
- * 扩展清单与 Chrome 清单由本脚本同步。
+ * 扩展清单由本脚本同步。
  *
  * 用法：
  *   node scripts/version.mjs check        # 三处不一致则 exit 1
  *   node scripts/version.mjs set 2.0.0    # 一次写三处
  *
  * 也可通过 npm run version:check / npm run version:set 2.0.0 调用。
- * 注意：Chrome 清单版本必须是 1~4 段点分整数（每段 0-65535，无前导零）。
+ * 注意：浏览器扩展清单版本必须是 1~4 段点分整数（每段 0-65535，无前导零）。
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
@@ -20,7 +20,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const targets = [
   { file: 'package.json', name: '根 package.json' },
   { file: 'src-vsc/package.json', name: 'src-vsc/package.json' },
-  { file: 'src-chrome/manifest.json', name: 'src-chrome/manifest.json' }
+  { file: 'src-extension/manifest.json', name: 'src-extension/manifest.json' }
 ]
 
 const VERSION_RE = /^(0|[1-9]\d*)(\.(0|[1-9]\d*)){1,3}$/

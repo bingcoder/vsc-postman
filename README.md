@@ -1,13 +1,12 @@
 # vsc-postman
 
-
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A51.90-007ACC?logo=visualstudiocode&logoColor=white)](#vs-code-扩展)
-[![Edge](https://img.shields.io/badge/Edge-Chromium%20116%2B-0078D7?logo=microsoftedge&logoColor=white)](#edge--chrome-扩展)
+[![Browser extension](https://img.shields.io/badge/browser%20extension-Chromium%20116%2B-0078D7)](#体积)
 
 - **免登录**：没有账号、注册、邀请码、云端工作区。装完打开就能发请求。
 - **数据在本地**：集合、历史、设置只写进浏览器的 `localStorage` 或 VS Code 的扩展存储，不上传、不同步、不经过任何服务器。
-- **一套 UI，三个宿主**：VS Code 侧边栏与编辑器标签、Edge/Chrome 扩展、普通 Web 页面，共享同一份 React 代码。
+- **一套 UI，三个宿主**：VS Code 侧边栏与编辑器标签、浏览器扩展（Edge / Chrome 等 Chromium 内核浏览器）、普通 Web 页面，共享同一份 React 代码。
 - **调试力不打折**：Query / Headers / 四种请求体 / 不限大小的流式文件上传 / SSE 事件流边收边看。
 
 ## 界面预览
@@ -30,9 +29,6 @@
 | 会不会偷偷存 Cookie | 不会。请求固定 `credentials: 'omit'`，扩展也不申请 `cookies` 权限 |
 | 会不会加载远程代码  | 不会。扩展 CSP 限定 `script-src 'self'`，所有代码随包分发         |
 
-
-
-
 ## 功能
 
 - HTTP 方法：`GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS`
@@ -45,18 +41,15 @@
 - 浅色 / 深色主题（`system` 跟随系统或 VS Code 主题）、中英文界面、`⌘/Ctrl + Enter` 发送
 - 存储页可视化查看当前持久化内容，并可复制为 JSON
 
-
 ## 体积
 
 三个宿主都随包分发完整前端，不依赖 CDN、不加载远程脚本，装好断网也能用。
 
-| 产物                   | 下载体积   | 解包后 | 文件数 | 内容                                          |
-| ---------------------- | ---------- | ------ | ------ | --------------------------------------------- |
-| VS Code 扩展 `.vsix`   | **398 KB** | 1.3 MB | 29     | 扩展宿主 JS + 同一份 Webview 前端             |
-| Edge / Chrome 扩展 zip | **360 KB** | 1.1 MB | 8      | MV3 清单 + Service Worker + 同一份前端 bundle |
-| 共享 Web UI `dist/`    | —          | 1.1 MB | 7      | 同时作为 VS Code Webview 的 `media/` 资源     |
-
-
+| 产物                 | 下载体积   | 解包后 | 文件数 | 内容                                          |
+| -------------------- | ---------- | ------ | ------ | --------------------------------------------- |
+| VS Code 扩展 `.vsix` | **398 KB** | 1.3 MB | 29     | 扩展宿主 JS + 同一份 Webview 前端             |
+| 浏览器扩展 zip       | **360 KB** | 1.1 MB | 8      | MV3 清单 + Service Worker + 同一份前端 bundle |
+| 共享 Web UI `dist/`  | —          | 1.1 MB | 7      | 同时作为 VS Code Webview 的 `media/` 资源     |
 
 ## License
 

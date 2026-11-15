@@ -110,10 +110,10 @@ jobs:
           npx --yes @vscode/vsce package --githubBranch master \
             -o "$GITHUB_WORKSPACE/out/vsc-postman-${{ needs.prepare.outputs.version }}.vsix"
 
-      - name: 打包 Edge 扩展（人工上传用）
+      - name: 打包浏览器扩展（人工上传用）
         run: |
-          npm run build:chrome
-          node scripts/package-chrome.mjs
+          npm run build:extension
+          node scripts/package-extension.mjs
 
       - name: 校验产物
         env:
@@ -121,7 +121,7 @@ jobs:
         run: |
           set -euo pipefail
           VSIX="out/vsc-postman-${VERSION}.vsix"
-          ZIP="out/vsc-postman-edge-${VERSION}.zip"
+          ZIP="out/vsc-postman-browser-extension-${VERSION}.zip"
 
           test -f "$VSIX" || { echo "::error::缺少 $VSIX"; exit 1; }
           test -f "$ZIP" || { echo "::error::缺少 $ZIP"; exit 1; }
@@ -132,7 +132,7 @@ jobs:
             const version = process.env.VERSION;
             const read = (args) => execFileSync("unzip", args, { encoding: "utf8" });
             const vsixPkg = JSON.parse(read(["-p", `out/vsc-postman-${version}.vsix`, "extension/package.json"]));
-            const zipManifest = JSON.parse(read(["-p", `out/vsc-postman-edge-${version}.zip`, "manifest.json"]));
+            const zipManifest = JSON.parse(read(["-p", `out/vsc-postman-browser-extension-${version}.zip`, "manifest.json"]));
             if (vsixPkg.version !== version) throw new Error(`vsix 版本 ${vsixPkg.version} != ${version}`);
             if (zipManifest.version !== version) throw new Error(`zip 版本 ${zipManifest.version} != ${version}`);
             console.log("版本一致：", version);
@@ -211,7 +211,7 @@ jobs:
           if git diff --quiet; then
             echo "版本号已是 $VERSION，跳过提交"
           else
-            git add package.json src-vsc/package.json src-chrome/manifest.json package-lock.json
+            git add package.json src-vsc/package.json src-extension/manifest.json package-lock.json
             git commit -m "chore(release): v$VERSION [skip ci]"
           fi
 
@@ -258,6 +258,6 @@ jobs:
             echo ""
             echo "- 版本：\`v${{ needs.prepare.outputs.version }}\`（${{ needs.prepare.outputs.reason }}）"
             echo "- VS Code Marketplace：已提交，通常几分钟内可见"
-            echo "- Edge Add-ons：**需人工上传** —— 从本 Release 下载 \`vsc-postman-edge-${{ needs.prepare.outputs.version }}.zip\`，"
+            echo "- Edge Add-ons：**需人工上传** —— 从本 Release 下载 \`vsc-postman-browser-extension-${{ needs.prepare.outputs.version }}.zip\`，"
             echo "  到 [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/public/login) 的 Packages 页上传并 Publish"
           } >> "$GITHUB_STEP_SUMMARY"

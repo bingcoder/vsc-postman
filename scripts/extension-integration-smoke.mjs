@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 const repoRoot = process.cwd()
-const extensionPath = path.join(repoRoot, 'dist-chrome')
+const extensionPath = path.join(repoRoot, 'dist-extension')
 const browserCandidates = [
   process.env.BROWSER_PATH,
   '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
@@ -153,6 +153,7 @@ const testExtension = await fs.mkdtemp(path.join(os.tmpdir(), 'vsc-postman-test-
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'vsc-postman-test-profile-'))
 let browser
 let pageWs
+let workerWs
 
 try {
   await fs.cp(extensionPath, testExtension, { recursive: true })
@@ -206,7 +207,7 @@ try {
             connection.send,
             `JSON.stringify({ id: chrome.runtime.id, name: chrome.runtime.getManifest().name })`
           )
-          if (info.name === 'vsc-postman') return info
+          if (info.name === 'vsc-postman') return { ...info, workerUrl: worker.webSocketDebuggerUrl }
         } finally {
           connection.ws.close()
         }
@@ -223,6 +224,8 @@ try {
   )
   const pageConnection = await connect(page.webSocketDebuggerUrl)
   pageWs = pageConnection.ws
+  const workerConnection = await connect(extension.workerUrl)
+  workerWs = workerConnection.ws
 
   const expression = `(async () => {
     const SERVER = 'http://127.0.0.1:${serverPort}';
@@ -324,43 +327,65 @@ try {
     })()`
   )
 
-  const permissionUi = await evaluateJson(
-    pageConnection.send,
-    `(async () => {
-      const originalRequest = chrome.permissions.request;
-      let patched = false;
-      try {
-        chrome.permissions.request = async () => false;
-        patched = chrome.permissions.request !== originalRequest;
-      } catch (error) {
-        return JSON.stringify({ patched: false, skipped: true, error: String(error) });
-      }
-      if (!patched) return JSON.stringify({ patched: false, skipped: true });
-
-      try {
-        const input = document.querySelector('input[aria-label="请求 URL"]');
-        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-        setter.call(input, 'http://127.0.0.1:${serverPort}/echo');
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        await new Promise((resolve) => setTimeout(resolve, 200));
-
-        const button = document.querySelector('button[aria-label="发送请求"]');
-        if (!button) return JSON.stringify({ patched: true, ok: false, reason: 'send button missing' });
-        button.click();
-
-        for (let index = 0; index < 40; index += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          const text = document.body.innerText;
-          if (text.includes('允许并重试')) {
-            return JSON.stringify({ patched: true, ok: true, text: text.slice(-300) });
-          }
+  // 页面不再在发送前申请权限；站点访问被收回后由 Service Worker 的 contains() 拒绝。
+  // 因此把 SW 里的 contains 改成恒 false，模拟用户在扩展详情页把站点访问改成了“点击时”。
+  const permissionUi = await (async () => {
+    const patched = await evaluateJson(
+      workerConnection.send,
+      `(() => {
+        const original = chrome.permissions.contains;
+        try {
+          chrome.permissions.contains = async () => false;
+        } catch (error) {
+          return JSON.stringify({ patched: false, skipped: true, error: String(error) });
         }
-        return JSON.stringify({ patched: true, ok: false, text: document.body.innerText.slice(-300) });
-      } finally {
-        chrome.permissions.request = originalRequest;
-      }
-    })()`
-  )
+        if (chrome.permissions.contains === original) {
+          return JSON.stringify({ patched: false, skipped: true });
+        }
+        globalThis.__originalPermissionsContains = original;
+        return JSON.stringify({ patched: true });
+      })()`
+    )
+
+    if (!patched.patched) return patched
+
+    try {
+      return await evaluateJson(
+        pageConnection.send,
+        `(async () => {
+          const input = document.querySelector('input[aria-label="请求 URL"]');
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+          setter.call(input, 'http://127.0.0.1:${serverPort}/echo');
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          await new Promise((resolve) => setTimeout(resolve, 200));
+
+          const button = document.querySelector('button[aria-label="发送请求"]');
+          if (!button) return JSON.stringify({ patched: true, ok: false, reason: 'send button missing' });
+          button.click();
+
+          for (let index = 0; index < 40; index += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+            const text = document.body.innerText;
+            if (text.includes('重新发送')) {
+              return JSON.stringify({ patched: true, ok: true, text: text.slice(-300) });
+            }
+          }
+          return JSON.stringify({ patched: true, ok: false, text: document.body.innerText.slice(-300) });
+        })()`
+      )
+    } finally {
+      await evaluateJson(
+        workerConnection.send,
+        `(() => {
+          if (globalThis.__originalPermissionsContains) {
+            chrome.permissions.contains = globalThis.__originalPermissionsContains;
+            delete globalThis.__originalPermissionsContains;
+          }
+          return JSON.stringify({ restored: true });
+        })()`
+      ).catch(() => undefined)
+    }
+  })()
 
   const checks = {
     uiFetch: ui.ok,
@@ -384,6 +409,7 @@ try {
   console.log(JSON.stringify({ checks, ui, permissionUi, results }, null, 2))
   if (Object.values(checks).some((value) => !value)) process.exitCode = 1
 } finally {
+  workerWs?.close()
   pageWs?.close()
   browser?.kill('SIGKILL')
   server.close()

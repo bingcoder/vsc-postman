@@ -6,7 +6,7 @@ node_modules/
 dist/
 dist-ssr/
 dist-vsc/
-dist-chrome/
+dist-extension/
 
 # Environment files (keep the example)
 .env
@@ -40,7 +40,6 @@ docs/internal/
 
 # 打包产物
 *.vsix
-vsc-postman-chrome-*.zip
-vsc-postman-edge-*.zip
+vsc-postman-browser-extension-*.zip
 out/
 release-notes.md

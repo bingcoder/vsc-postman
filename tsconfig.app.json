@@ -19,9 +19,9 @@
     "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@chrome/*": ["./src-chrome/*"]
+      "@extension/*": ["./src-extension/*"]
     }
   },
-  "include": ["src", "src-chrome"],
-  "exclude": ["src-chrome/vite.config.ts"]
+  "include": ["src", "src-extension"],
+  "exclude": ["src-extension/vite.config.ts"]
 }

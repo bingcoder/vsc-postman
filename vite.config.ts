@@ -19,7 +19,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@chrome': path.resolve(__dirname, './src-chrome')
+      '@extension': path.resolve(__dirname, './src-extension')
     }
   }
 })

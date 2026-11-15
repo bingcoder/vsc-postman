@@ -354,13 +354,13 @@ const dictionary: Dictionary = {
     'Under VS Code only files picked through the host dialog can be sent ({name})'
   ],
   'error.permission.denied': ['未获得 {host} 的站点权限', 'Site access to {host} was not granted'],
-  'error.chrome.disconnected': [
+  'error.extension.disconnected': [
     '与扩展后台的连接已断开，请重试',
     'Lost connection to the extension background. Please retry.'
   ],
   'permission.deniedHint': [
-    'Chrome 当前未允许访问 {host}。请在扩展详情页把「站点访问」设为「在所有网站上」，然后重新发送。',
-    'Chrome is not allowing access to {host}. Set Site access to "On all sites" in the extension details, then send again.'
+    '浏览器当前未允许访问 {host}。请在扩展详情页把「站点访问」设为「在所有网站上」，然后重新发送。',
+    'Your browser is not allowing access to {host}. Set Site access to "On all sites" in the extension details, then send again.'
   ],
   'permission.allowAndRetry': ['重新发送', 'Send again']
 }

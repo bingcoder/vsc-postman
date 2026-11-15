@@ -1,4 +1,8 @@
-/** Minimal Chrome extension API surface (no @types/chrome). */
+/**
+ * Minimal browser extension API surface (no @types/chrome).
+ * The `chrome` namespace is the one Chromium-based browsers expose to extension pages,
+ * so the identifier stays `chrome` while the product targets any Chromium browser.
+ */
 declare namespace chrome {
   namespace runtime {
     interface MessageSender {
@@ -22,7 +26,7 @@ declare namespace chrome {
       disconnect(): void
     }
 
-    /** Extension context (Chrome 116+). */
+    /** Extension context (Chromium 116+). */
     interface ExtensionContext {
       contextType: string
       documentUrl?: string

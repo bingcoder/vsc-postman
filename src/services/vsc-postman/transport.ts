@@ -7,7 +7,7 @@ import type {
 } from '@/types/http'
 import { translate, getCurrentLanguage } from '@/lib/i18n'
 
-export type TransportKind = 'dev-proxy' | 'vscode' | 'fetch' | 'chrome'
+export type TransportKind = 'dev-proxy' | 'vscode' | 'fetch' | 'extension'
 
 export type UploadProgress = {
   loaded: number

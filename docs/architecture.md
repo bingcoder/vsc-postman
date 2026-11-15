@@ -1,6 +1,6 @@
 # 架构说明：HTTP 接口调试工作台
 
-本文说明「接口调试」页面的分层、开发代理协议，以及 VS Code / Chrome MV3 扩展的接入方式。
+本文说明「接口调试」页面的分层、开发代理协议，以及 VS Code / 浏览器扩展（MV3）的接入方式。
 
 ## 1. 目标
 
@@ -29,7 +29,7 @@
                │                               │
    ┌───────────┼──────────────┬───────────────┐      ┌──────────┴───────────┐
    ▼           ▼              ▼               ▼      ▼                      ▼
-DevProxy   VscodeBridge   ChromeBridge     Fetch   localStorage      VSCode globalState
+DevProxy   VscodeBridge   ExtensionBridge     Fetch   localStorage      VSCode globalState
 (Vite 插件) (postMessage)  (Port → SW)    (浏览器)                        (bridge RPC)
 ```
 
@@ -55,13 +55,13 @@ DevProxy   VscodeBridge   ChromeBridge     Fetch   localStorage      VSCode glob
 | `src/services/vsc-postman/*-transport.ts`     | 各运行时传输实现                                     |
 | `src/services/vsc-postman/index.ts`           | 运行时选择传输实现（组合根）                         |
 | `src/services/bridge/*`                       | Webview ↔ 扩展宿主 RPC 协议与客户端                  |
-| `src-chrome/chrome-transport.ts`              | 扩展页面侧 ChromeTransport                           |
-| `src-chrome/protocol.ts`                      | 扩展页面 ↔ Service Worker Port 协议                  |
-| `src-chrome/background.ts`                    | Chrome MV3 Service Worker，统一执行 Fetch            |
-| `src-chrome/permissions.ts`                   | Host Permission 匹配模式                             |
-| `src-chrome/manifest.json`                    | Chrome MV3 清单                                      |
-| `src-chrome/app.html`                         | 扩展页面入口（点击图标在新标签页打开）               |
-| `src-chrome/vite.config.ts`                   | Chrome MV3 构建配置                                  |
+| `src-extension/extension-transport.ts`        | 扩展页面侧 ExtensionTransport                        |
+| `src-extension/protocol.ts`                   | 扩展页面 ↔ Service Worker Port 协议                  |
+| `src-extension/background.ts`                 | MV3 Service Worker，统一执行 Fetch                   |
+| `src-extension/permissions.ts`                | Host Permission 匹配模式                             |
+| `src-extension/manifest.json`                 | MV3 清单                                             |
+| `src-extension/app.html`                      | 扩展页面入口（点击图标在新标签页打开）               |
+| `src-extension/vite.config.ts`                | MV3 构建配置                                         |
 | `src/services/storage/*`                      | 存储适配器与选择逻辑                                 |
 | `src/components/sidebar/*`                    | 集合树、请求列表、历史、搜索                         |
 | `src/lib/theme.ts` / `src/hooks/use-theme.ts` | 浅色 / 深色 / 系统主题                               |
@@ -77,13 +77,13 @@ DevProxy   VscodeBridge   ChromeBridge     Fetch   localStorage      VSCode glob
 
 传输层选择（`src/services/vsc-postman/index.ts`）：
 
-| 环境            | 条件                         | 实现                                      |
-| --------------- | ---------------------------- | ----------------------------------------- |
-| VS Code Webview | 优先                         | `VscodeTransport` → `postMessage` RPC     |
-| 浏览器扩展      | 次优先                       | `ChromeTransport` → Port → Service Worker |
-| 任意环境        | 配置了 `VITE_HTTP_PROXY_URL` | `DevProxyTransport`（指向该地址）         |
-| Vite 开发       | `import.meta.env.DEV`        | `DevProxyTransport('/__http-proxy')`      |
-| 其他            | 默认                         | `FetchTransport`                          |
+| 环境            | 条件                         | 实现                                         |
+| --------------- | ---------------------------- | -------------------------------------------- |
+| VS Code Webview | 优先                         | `VscodeTransport` → `postMessage` RPC        |
+| 浏览器扩展      | 次优先                       | `ExtensionTransport` → Port → Service Worker |
+| 任意环境        | 配置了 `VITE_HTTP_PROXY_URL` | `DevProxyTransport`（指向该地址）            |
+| Vite 开发       | `import.meta.env.DEV`        | `DevProxyTransport('/__http-proxy')`         |
+| 其他            | 默认                         | `FetchTransport`                             |
 
 存储层选择（`src/services/storage/index.ts`）：Webview 使用桥接存储，其余使用 localStorage；桥接失败自动回退到 localStorage，localStorage 不可用时退回内存。
 
@@ -112,7 +112,7 @@ type PreparedRequest = {
 }
 
 interface HttpTransport {
-  readonly kind: 'dev-proxy' | 'vscode' | 'fetch' | 'chrome'
+  readonly kind: 'dev-proxy' | 'vscode' | 'fetch' | 'extension'
   send(
     request: PreparedRequest,
     options?: {
@@ -383,11 +383,11 @@ panel.webview.onDidReceiveMessage(async (message) => {
 - **展示差异**：1.x 不保存请求体，迁移条目 `status = null`、`durationMs = 0`、`error` 标记为「从旧版本导入，重新发送后才会显示响应」。
 - **验证**：`npm run smoke:migrate`（加载 `dist-vsc/` 编译产物 + `vscode` shim，覆盖正常/非法/缺字段/幂等/合并/上限裁剪）。
 
-## 7. Chrome MV3 扩展接入
+## 7. 浏览器扩展（MV3）接入
 
 ### 7.1 结构
 
-Chrome 扩展入口是 `src-chrome/app.html`，它复用与 Web / VS Code 相同的 React UI。`chrome.runtime.id` 使 `detectRuntime()` 返回 `browser-extension`，组合根随之选择 `ChromeTransport`。Service Worker 监听 `chrome.action.onClicked`，在新标签页打开 `chrome-extension://<id>/app.html`；页面已存在时聚焦现有标签页，不再重复新建。
+浏览器扩展入口是 `src-extension/app.html`，它复用与 Web / VS Code 相同的 React UI。`chrome.runtime.id` 使 `detectRuntime()` 返回 `browser-extension`，组合根随之选择 `ExtensionTransport`。Service Worker 监听 `chrome.action.onClicked`，在新标签页打开 `chrome-extension://<id>/app.html`；页面已存在时聚焦现有标签页，不再重复新建。
 
 ```
 App Page (chrome-extension://<id>/app.html)
@@ -428,10 +428,10 @@ Background Service Worker
 
 ### 7.3 Host Permission
 
-- 安装时由 manifest 的 `host_permissions` 一次授予全部 http/https 站点访问，`ChromeTransport` 不再在发送前申请权限，也不会弹出按域名的授权框。
-- Service Worker 收到请求后仍调用 `chrome.permissions.contains()` 复核：如果用户在 Chrome 扩展详情页把「站点访问」改成「点击时」或指定站点，会返回 `permission-denied`，请求区提示改回「在所有网站上」后重新发送。
+- 安装时由 manifest 的 `host_permissions` 一次授予全部 http/https 站点访问，`ExtensionTransport` 不再在发送前申请权限，也不会弹出按域名的授权框。
+- Service Worker 收到请求后仍调用 `chrome.permissions.contains()` 复核：如果用户在扩展详情页把「站点访问」改成「点击时」或指定站点，会返回 `permission-denied`，请求区提示改回「在所有网站上」后重新发送。
 - 匹配模式不支持端口，因此按主机整体授权（同一主机的所有端口共用）；这里只为 `contains()` 生成模式，不再发起授权请求。
-- 设置页不再提供站点权限管理；收回权限通过 Chrome 扩展详情页完成，`chrome.permissions.remove()` 无法移除 manifest 中声明的必需权限。
+- 设置页不再提供站点权限管理；收回权限通过扩展详情页完成，`chrome.permissions.remove()` 无法移除 manifest 中声明的必需权限。
 
 ### 7.4 限制与生命周期
 
@@ -440,7 +440,7 @@ Background Service Worker
 - 响应仍受 5MB 展示上限约束；SSE 使用 120s 空闲超时，SSE 期间扩展页面每 20s 发一次 `ping`，降低 Service Worker 因空闲被回收的概率。
 - MV3 Service Worker 仍有生命周期与长任务限制；如果后续需要超长 SSE，应评估 Offscreen Document 或把流改由扩展页面持有，这需要与“统一在 SW Fetch”的目标做取舍。
 - Service Worker 发出的请求会带上 `Origin: chrome-extension://<id>`；部分服务端会按该 Origin 做限制，这不是 CORS 能绕过的。
-- 构建：`npm run build:chrome`，加载 `dist-chrome/`。Chrome 137+ 品牌版会忽略 `--load-extension` 自动化参数，手工“加载已解压的扩展程序”不受影响；CI 可使用 Edge / Chrome for Testing。
+- 构建：`npm run build:extension`，加载 `dist-extension/`。Chrome 137+ 品牌版会忽略 `--load-extension` 自动化参数，手工“加载已解压的扩展程序”不受影响；CI 可使用 Edge / Chrome for Testing。
 
 ## 8. 状态、集合与持久化
 
@@ -489,14 +489,14 @@ type Collection = {
 ```bash
 npm run lint
 npm run build
-npm run build:chrome
+npm run build:extension
 npm run build:vsc
 npm run package:vsix
 npm run dev
 npm run smoke:migrate
 ```
 
-Chrome 扩展自动化冒烟测试：
+浏览器扩展自动化冒烟测试：
 
 ```bash
 # 检查扩展页面能否在 chrome-extension:// 下正常渲染
@@ -536,9 +536,9 @@ curl -sN -X POST http://127.0.0.1:5173/__http-proxy/stream \
 
 - 不支持环境变量、嵌套集合/文件夹、拖拽排序、鉴权助手、代码生成、Mock。
 - 不支持二进制响应下载、Cookie 凭据（`credentials: 'omit'`）。
-- Chrome 扩展的文件上传由扩展页面直接发送，因此上传期间不能关闭页面；也不申请 `cookies` 权限，因此无法使用浏览器会话 Cookie。
-- Chrome 扩展的长 SSE 受 MV3 Service Worker 生命周期限制；当前通过 20s `ping` 缓解空闲回收，但没有绕过 Chrome 的长任务上限。
-- Chrome 137+ 品牌版忽略 `--load-extension` 自动化参数，扩展冒烟脚本因此优先使用 Edge / Chrome for Testing；手工加载 `dist-chrome/` 不受影响。
+- 浏览器扩展的文件上传由扩展页面直接发送，因此上传期间不能关闭页面；也不申请 `cookies` 权限，因此无法使用浏览器会话 Cookie。
+- 浏览器扩展的长 SSE 受 MV3 Service Worker 生命周期限制；当前通过 20s `ping` 缓解空闲回收，但没有绕过浏览器对 Service Worker 的长任务上限。
+- Chrome 137+ 品牌版忽略 `--load-extension` 自动化参数，扩展冒烟脚本因此优先使用 Edge / Chrome for Testing；手工加载 `dist-extension/` 不受影响。
 - SSE 只做「调试展示」：不自动重连、不发 `Last-Event-ID`、不把 `retry` 用于重连；展示缓冲上限 2MB / 2000 事件，达到后主动断开（原始报文仍可查看已接收部分）。`EventSource` 的浏览器自动重连语义不会在这里复现。
 - `form-data` 上传：不跟随 3xx（流式 body 无法重放，重定向响应原样展示）；`Content-Length`、`User-Agent`、`Connection` 等浏览器禁止头在 raw 模式下无法由用户设置；`VITE_HTTP_PROXY_URL` 指向的外部代理必须实现 `/__http-proxy/raw`；若要实时 SSE，还需实现 `/__http-proxy/stream`（缺失时自动回退为收完后展示）。
 - VS Code 下文件只能通过宿主选择框选取（webview 拿不到本地路径），因此同一请求在 Web 与 VS Code 间切换后需要重新选文件。
@@ -547,7 +547,7 @@ curl -sN -X POST http://127.0.0.1:5173/__http-proxy/stream \
 - VS Code 的「复制请求」由宿主复制已保存版本，不包含当前标签里尚未保存的草稿修改。
 - 仅展示最终 URL，不展示重定向链；不自动解压后的头信息修正（响应头按上游返回展示）。
 - 开发代理不校验目标 TLS 证书配置，自签名目标会失败。
-- 没有单元测试框架；`prepareRequest` 为纯函数，便于后续接入 Vitest。Chrome/Edge 扩展提供渲染与 Fetch 冒烟脚本（见 §10）。
+- 没有单元测试框架；`prepareRequest` 为纯函数，便于后续接入 Vitest。浏览器扩展提供渲染与 Fetch 冒烟脚本（见 §10）。
 
 ## 12. 界面与主题
 

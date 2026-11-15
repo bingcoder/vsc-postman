@@ -25,8 +25,8 @@ type PendingRequest = {
 }
 
 /** 普通请求交给 Service Worker；带文件的 multipart 因 Port 无法传 File，改由页面直接 fetch。 */
-export class ChromeTransport implements HttpTransport {
-  readonly kind = 'chrome' as const
+export class ExtensionTransport implements HttpTransport {
+  readonly kind = 'extension' as const
 
   private port: chrome.runtime.Port | null = null
   private readonly pending = new Map<string, PendingRequest>()
@@ -69,7 +69,7 @@ export class ChromeTransport implements HttpTransport {
       if (!posted) {
         this.finish(
           requestId,
-          new HttpRequestError('network', translate('error.chrome.disconnected', lang))
+          new HttpRequestError('network', translate('error.extension.disconnected', lang))
         )
       }
     })
@@ -131,7 +131,7 @@ export class ChromeTransport implements HttpTransport {
 
     this.port = null
     this.failAllPending(
-      new HttpRequestError('network', translate('error.chrome.disconnected', lang))
+      new HttpRequestError('network', translate('error.extension.disconnected', lang))
     )
   }
 
@@ -163,7 +163,7 @@ export class ChromeTransport implements HttpTransport {
       this.failAllPending(
         new HttpRequestError(
           'network',
-          translate('error.chrome.disconnected', getCurrentLanguage())
+          translate('error.extension.disconnected', getCurrentLanguage())
         )
       )
       return false

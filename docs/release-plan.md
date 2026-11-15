@@ -1,6 +1,6 @@
-# 发布流水线（push master → 自动发版 → VS Code 市场 + Edge 人工上传包）
+# 发布流水线（push master → 自动发版 → VS Code 市场 + 浏览器扩展人工上传包）
 
-> 本文件是**已实现流水线**的说明书。代码：`.github/workflows/release.yml`、`scripts/release-bump.mjs`、`scripts/package-chrome.mjs`、`scripts/version.mjs`、`scripts/package-vsix.sh`。
+> 本文件是**已实现流水线**的说明书。代码：`.github/workflows/release.yml`、`scripts/release-bump.mjs`、`scripts/package-extension.mjs`、`scripts/version.mjs`、`scripts/package-vsix.sh`。
 
 ## 1. 一句话链路
 
@@ -11,16 +11,16 @@ push master
 prepare  读「上个 tag 之后的提交」→ 决定 bump（feat / fix / perf / 破坏性）→ 算出 vX.Y.Z
    │                                                   │ 无可发布内容 → 整条流水线结束
    ▼
-build    写三处版本号 → 构建 → 打包 .vsix + Edge zip → 校验 → 发 VS Code 市场（OIDC）
+build    写三处版本号 → 构建 → 打包 .vsix + 浏览器扩展 zip → 校验 → 发 VS Code 市场（OIDC）
    ▼
 tag      回写版本提交 → 打 vX.Y.Z → 建 GitHub Release
-         （附件：vsc-postman-X.Y.Z.vsix、vsc-postman-edge-X.Y.Z.zip）
+         （附件：vsc-postman-X.Y.Z.vsix、vsc-postman-browser-extension-X.Y.Z.zip）
                                    │
                                    ▼
                         人工：Partner Center 上传 zip → Publish（约 2 分钟）
 ```
 
-**VS Code 全自动，Edge 半自动**：CI 保证「包一定是对的、版本一定没漂」，Edge 侧只剩一次拖拽上传。
+**VS Code 全自动，浏览器扩展半自动**：CI 保证「包一定是对的、版本一定没漂」，浏览器扩展侧只剩一次拖拽上传。
 
 ## 2. 什么时候会发版
 
@@ -45,11 +45,11 @@ tag      回写版本提交 → 打 vX.Y.Z → 建 GitHub Release
 
 `package.json` 的 `version` 是唯一来源，`scripts/version.mjs set` 一次写三处：
 
-| 文件                       | 为什么必须同步                  |
-| -------------------------- | ------------------------------- |
-| `package.json`             | 权威值，`release-bump.mjs` 读它 |
-| `src-vsc/package.json`     | 打进 `.vsix`，市场按它判断版本  |
-| `src-chrome/manifest.json` | Edge zip 的版本，重复会被拒收   |
+| 文件                          | 为什么必须同步                      |
+| ----------------------------- | ----------------------------------- |
+| `package.json`                | 权威值，`release-bump.mjs` 读它     |
+| `src-vsc/package.json`        | 打进 `.vsix`，市场按它判断版本      |
+| `src-extension/manifest.json` | 浏览器扩展 zip 的版本，重复会被拒收 |
 
 `release-bump.mjs` 只**算**不写，`version.mjs` 只**写**不算，职责分离。版本格式受商店约束：1~4 段点分整数，每段 0–65535，无前导零。
 
@@ -85,13 +85,13 @@ npx @vscode/vsce publish --oidc --packagePath …/vsc-postman-X.Y.Z.vsix
 
 权衡结果：CI 产出**已校验的 zip**（`manifest.json` 在根目录、版本三处一致、体积打印），挂到 Release；人工上传约 2 分钟，零维护、不引入 Client ID / API Key 这类会过期的凭据。
 
-打包脚本：`npm run package:chrome` → `out/vsc-postman-edge-<version>.zip`，内部会校验：
+打包脚本：`npm run package:extension` → `out/vsc-postman-browser-extension-<version>.zip`，内部会校验：
 
 - `manifest.json` / `background.js` / `app.html` / `icon.png` 都在 zip **根目录**；
-- 没有外层文件夹（`dist-chrome/manifest.json` 这种会被商店拒收）；
+- 没有外层文件夹（`dist-extension/manifest.json` 这种会被商店拒收）；
 - 版本号是 1~4 段点分整数。
 
-> 注意：这个 zip 同时也是「加载解压的扩展」用的产物，但**不发布到 Chrome Web Store**，本期只面向 Edge。
+> 注意：这个 zip 同时也是「加载解压的扩展」用的产物，同一份包可上传到任意 Chromium 扩展商店，本期只提交 Edge Add-ons。
 
 ## 6. 需要配置的东西
 
@@ -122,7 +122,7 @@ npx @vscode/vsce publish --oidc --packagePath …/vsc-postman-X.Y.Z.vsix
 
 ```bash
 # 1) 本地先验证打包与版本判定（不发任何请求）
-npm run package:chrome      # out/vsc-postman-edge-<version>.zip
+npm run package:extension      # out/vsc-postman-browser-extension-<version>.zip
 npm run release:bump        # 看它算出什么版本、什么理由
 
 # 2) 推一个 DRY RUN：Actions → release → Run workflow，dry_run=true

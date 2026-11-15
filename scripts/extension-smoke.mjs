@@ -24,10 +24,7 @@ async function firstExisting(paths) {
 }
 
 const browserPath = await firstExisting(browserCandidates)
-const extensionPath = path.resolve(process.cwd(), 'dist-chrome')
-const chromeManifest = JSON.parse(
-  await fs.readFile(path.join(extensionPath, 'manifest.json'), 'utf8')
-)
+const extensionPath = path.resolve(process.cwd(), 'dist-extension')
 const appPagePath = 'app.html'
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'vsc-postman-browser-'))
 const port = Number(process.env.CDP_PORT || 9229)

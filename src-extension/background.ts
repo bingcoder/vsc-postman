@@ -26,7 +26,7 @@ chrome.action.onClicked.addListener(() => {
   void openAppPage().catch(() => undefined)
 })
 
-/** 用 getContexts（Chrome 116+）查找已打开的页面，无需 tabs 权限。 */
+/** 用 getContexts（Chromium 116+）查找已打开的页面，无需 tabs 权限。 */
 async function openAppPage(): Promise<void> {
   const pageUrl = chrome.runtime.getURL(APP_PAGE_PATH)
   const existing = await findAppTab(pageUrl)

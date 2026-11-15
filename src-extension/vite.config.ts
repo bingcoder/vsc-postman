@@ -7,11 +7,11 @@ import path from 'node:path'
 const projectRoot = path.resolve(__dirname, '..')
 
 /** 复制 manifest、图标与扩展说明；放在 closeBundle 以支持 --watch。 */
-function copyChromeAssets(): Plugin {
+function copyExtensionAssets(): Plugin {
   return {
-    name: 'copy-chrome-assets',
+    name: 'copy-extension-assets',
     async closeBundle() {
-      const outDir = path.resolve(projectRoot, 'dist-chrome')
+      const outDir = path.resolve(projectRoot, 'dist-extension')
       await mkdir(outDir, { recursive: true })
       await copyFile(path.resolve(__dirname, 'manifest.json'), path.join(outDir, 'manifest.json'))
       await copyFile(path.resolve(projectRoot, 'public/icon.png'), path.join(outDir, 'icon.png'))
@@ -27,7 +27,7 @@ function flattenAppHtml(): Plugin {
     name: 'flatten-app-html',
     enforce: 'post',
     generateBundle(_options, bundle) {
-      const key = Object.keys(bundle).find((name) => name.endsWith('src-chrome/app.html'))
+      const key = Object.keys(bundle).find((name) => name.endsWith('src-extension/app.html'))
       if (!key) return
 
       const asset = bundle[key]
@@ -43,14 +43,14 @@ function flattenAppHtml(): Plugin {
   }
 }
 
-/** Chrome MV3 构建：app.html 为页面入口，background 固定命名，产物用相对路径。 */
+/** 浏览器扩展 MV3 构建：app.html 为页面入口，background 固定命名，产物用相对路径。 */
 export default defineConfig({
   root: projectRoot,
   base: './',
   publicDir: path.resolve(projectRoot, 'public'),
-  plugins: [react(), tailwindcss(), flattenAppHtml(), copyChromeAssets()],
+  plugins: [react(), tailwindcss(), flattenAppHtml(), copyExtensionAssets()],
   build: {
-    outDir: path.resolve(projectRoot, 'dist-chrome'),
+    outDir: path.resolve(projectRoot, 'dist-extension'),
     emptyOutDir: true,
     target: 'chrome116',
     rollupOptions: {
@@ -69,7 +69,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(projectRoot, 'src'),
-      '@chrome': __dirname
+      '@extension': __dirname
     }
   }
 })

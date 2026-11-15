@@ -2,6 +2,7 @@
 
 > 目标：把 `vsc-postman-new`（新版实现）升级进老仓库 `vsce-postman`，**保留老仓库的 git 地址与扩展身份**，让它继续作为发布渠道。
 > 本文只做方案，不改代码。
+> 注：本文是 2.0 升级期的方案存档；文中 `src-chrome` / `dist-chrome` / `build:chrome` 等路径与命令在后续重构中已统一改名为 `src-extension` / `dist-extension` / `build:extension`，历史表述保持原样。
 
 ---
 

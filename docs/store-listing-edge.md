@@ -4,14 +4,14 @@ Partner Center 的表单字段长期不可复用于仓库，因此把最终文�
 
 ## 0. 提交前必须齐全的素材
 
-| 素材             | 规格                              | 现状                                                               |
-| ---------------- | --------------------------------- | ------------------------------------------------------------------ |
-| 扩展 Logo        | 1:1，推荐 300×300，最小 128×128   | ⚠️ 现有 `public/icon.png` 为 200×200，需重出 300/512               |
-| 截图             | 640×480 或 1280×800，最多 6 张    | ✅ 已备 2 张，见下表                                               |
-| 小促销图（可选） | 440×280                           | 待补                                                               |
-| 大促销图（可选） | 1400×560                          | 待补                                                               |
-| 打包 zip         | `manifest.json` 必须在 zip 根目录 | ✅ `npm run package:chrome` 产出并校验（当前 360 KB，解包 1.1 MB） |
-| 隐私政策 URL     | 可公开访问                        | ✅ 直接用仓库里的 `docs/privacy.md` 页面（见 §6）                  |
+| 素材             | 规格                              | 现状                                                                  |
+| ---------------- | --------------------------------- | --------------------------------------------------------------------- |
+| 扩展 Logo        | 1:1，推荐 300×300，最小 128×128   | ⚠️ 现有 `public/icon.png` 为 200×200，需重出 300/512                  |
+| 截图             | 640×480 或 1280×800，最多 6 张    | ✅ 已备 2 张，见下表                                                  |
+| 小促销图（可选） | 440×280                           | 待补                                                                  |
+| 大促销图（可选） | 1400×560                          | 待补                                                                  |
+| 打包 zip         | `manifest.json` 必须在 zip 根目录 | ✅ `npm run package:extension` 产出并校验（当前 360 KB，解包 1.1 MB） |
+| 隐私政策 URL     | 可公开访问                        | ✅ 直接用仓库里的 `docs/privacy.md` 页面（见 §6）                     |
 
 **可直接上传的截图**（Partner Center 只收 640×480 或 1280×800；源图 `2560×1600` 本身就是 16:10，按 50% 等比缩到 1280×800，无裁切、无补白）：
 
@@ -27,6 +27,8 @@ Partner Center 的表单字段长期不可复用于仓库，因此把最终文�
 ## 1. 商店名称与短描述
 
 > Edge 侧这两项**只读**，取自扩展包 `manifest.json` 的 `name` / `description`，改文案必须改 manifest 并重新上传 zip。
+> **`description` 里不能出现 Chrome、Firefox、Safari 等其他浏览器名**，否则包验证会报
+> 「避免在扩展描述中引用其他浏览器，例如 chrome」；`npm run package:extension` 已内置该校验，描述中性化后再打包。
 
 | 字段                       | 值                                                                                      |
 | -------------------------- | --------------------------------------------------------------------------------------- |
@@ -34,7 +36,7 @@ Partner Center 的表单字段长期不可复用于仓库，因此把最终文�
 | `short_name`               | `vsc-postman`                                                                           |
 | `description`（≤132 字符） | `HTTP client with no login and no cloud: collections and history stay on your machine.` |
 
-字符数：85。受 Chrome 的 132 字符上限约束，不要把功能列表塞进这里，详情放商店 Description。
+字符数：85。受扩展商店的 132 字符上限约束，不要把功能列表塞进这里，详情放商店 Description。
 
 ## 2. Description（en，≥250 字符）
 
@@ -160,6 +162,7 @@ No external services other than the URL typed by the user are contacted.
 ## 8. 一致性检查（提交前逐条打勾）
 
 - [ ] `manifest.json` 的 `version` 与 `package.json`、`src-vsc/package.json` 一致
+- [ ] `manifest.json` 的 `description` 未出现其他浏览器名（`npm run package:extension` 会校验）
 - [ ] Description 与 `docs/privacy.md`、根 README「隐私与数据」章节无矛盾
 - [ ] 截图里的 UI 文案语言与提交语言一致
 - [ ] zip 根目录含 `manifest.json` / `background.js` / `app.html` / `icon.png`

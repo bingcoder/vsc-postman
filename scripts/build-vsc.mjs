@@ -11,7 +11,7 @@ const distVsc = path.join(root, 'dist-vsc')
 const run = (script, args = []) =>
   execFileSync('npm', ['run', script, ...args], { cwd: root, stdio: 'inherit' })
 
-// 版本号单一来源：根 package.json 与扩展/Chrome 清单必须一致。
+// 版本号单一来源：根 package.json 与扩展清单必须一致。
 run('version:check')
 
 // 全量构建，避免旧产物残留。

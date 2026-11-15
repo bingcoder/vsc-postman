@@ -1,5 +1,7 @@
 # vsc-postman
 
+适用于 Chromium 内核浏览器（Edge、Chrome、Opera、Brave 等）的 MV3 扩展。
+
 ## 为什么用它
 
 - **免登录**：没有账号体系，也没有「登录以同步」的引导。
@@ -64,6 +66,8 @@
 ---
 
 # vsc-postman
+
+An MV3 extension for Chromium-based browsers (Edge, Chrome, Opera, Brave and others).
 
 ## Why this
 

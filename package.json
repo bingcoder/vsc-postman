@@ -19,13 +19,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:chrome": "tsc -b && vite build --config src-chrome/vite.config.ts",
-    "dev:chrome": "vite build --config src-chrome/vite.config.ts --watch",
+    "build:extension": "tsc -b && vite build --config src-extension/vite.config.ts",
+    "dev:extension": "vite build --config src-extension/vite.config.ts --watch",
     "compile:vsc": "tsc -p src-vsc/tsconfig.json",
     "build:vsc": "node scripts/build-vsc.mjs",
     "watch:vsc": "tsc -w -p src-vsc/tsconfig.json",
-    "smoke:extension": "node --experimental-websocket scripts/chrome-smoke.mjs",
-    "smoke:extension:fetch": "node --experimental-websocket scripts/chrome-integration-smoke.mjs",
+    "smoke:extension": "node --experimental-websocket scripts/extension-smoke.mjs",
+    "smoke:extension:fetch": "node --experimental-websocket scripts/extension-integration-smoke.mjs",
     "smoke:migrate": "node scripts/migrate-smoke/run.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
@@ -34,7 +34,7 @@
     "version:set": "node scripts/version.mjs set",
     "release:bump": "node scripts/release-bump.mjs",
     "package:vsix": "bash scripts/package-vsix.sh",
-    "package:chrome": "node scripts/package-chrome.mjs"
+    "package:extension": "node scripts/package-extension.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
