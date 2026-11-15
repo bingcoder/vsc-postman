@@ -191,13 +191,12 @@ jobs:
           name: release-assets
           path: out
 
+      # Release 正文只放变更摘要，不写 Edge 上架指引（上传步骤见 docs/release-plan.md）。
       - name: 重新生成变更摘要
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
           node scripts/release-bump.mjs --bump "${{ inputs.bump || 'auto' }}" --version "$VERSION" > /dev/null
-          printf '\n---\n\n**Edge 上架**：从本 Release 下载 `vsc-postman-edge-%s.zip`，到 Partner Center → Packages 上传并 Publish（约 2 分钟）。\n' \
-            "$VERSION" >> release-notes.md
 
       - name: 提交版本号并打 tag
         id: commit
