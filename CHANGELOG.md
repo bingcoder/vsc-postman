@@ -2,6 +2,21 @@
 
 本项目的所有重要变更记录在此文件。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [3.1.1] - 2026-11-15
+
+> 浏览器扩展打包链路通用化后的首个正式发布包；VS Code 侧无功能变化。
+
+### Changed
+
+- 浏览器扩展打包链路去掉 Chrome / Edge 专名：`src-chrome/` → `src-extension/`、`build:chrome` → `build:extension`、`package:chrome` → `package:extension`，产物改为 `out/vsc-postman-browser-extension-<version>.zip`
+- 根 README、扩展内 README、架构 / 发布 / 隐私文档同步为「浏览器扩展」表述；`chrome.*` API 与 `chrome-extension://` 协议保持不变
+
+### Fixed
+
+- Edge 包验证告警「避免在扩展描述中引用其他浏览器」：manifest 描述改为不含浏览器名的中性文案，打包脚本增加校验（非空、≤132 字符、禁止出现其他浏览器名）
+- 重复打包时旧哈希资源残留在 zip 内（9 → 11 条目、体积翻倍）：打包前先删除同名 zip
+- 扩展冒烟脚本的权限提示用例失效：改为在 Service Worker 内把 `permissions.contains()` 置为 `false`，验证「站点权限被收回 → 重新发送」路径
+
 ## [3.0.0] - 2026-11-15
 
 > 以 `3.0.0` 为基线的整理版本：版本号统一上调，仓库历史精简为单一提交。
