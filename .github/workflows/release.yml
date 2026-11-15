@@ -1,0 +1,264 @@
+name: release
+
+# 推送 master 即走完整链路：算版本 → 构建校验 → 发 VS Code 市场 → 打 tag / 出 Release。
+# 只有「值得发版」的提交（feat / fix / perf / 破坏性变更）才会真正发布，docs/chore/ci 会跳过。
+#
+# Edge Add-ons 不走自动提交：商店侧限制多（首次上架、审核排队），
+# 这里只负责把**校验过的 zip** 挂到 Release，点两下人工上传即可。
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 只构建与校验，不发市场、不打 tag
+        type: boolean
+        default: true
+      bump:
+        description: 版本递增方式（auto = 按提交类型判断）
+        type: choice
+        options: [auto, patch, minor, major]
+        default: auto
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-master
+  cancel-in-progress: false
+
+jobs:
+  # 1) 判定这一轮要不要发版，并把版本号算出来
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      should_release: ${{ steps.bump.outputs.should_release }}
+      version: ${{ steps.bump.outputs.version }}
+      previous_version: ${{ steps.bump.outputs.previous_version }}
+      bump: ${{ steps.bump.outputs.bump }}
+      reason: ${{ steps.bump.outputs.reason }}
+      dry_run: ${{ steps.mode.outputs.dry_run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # 需要完整历史才能算「上个 tag 之后的提交」
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: 解析运行模式
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 计算下一个版本
+        id: bump
+        run: node scripts/release-bump.mjs --bump "${{ inputs.bump || 'auto' }}"
+
+      - name: 写入 job summary
+        run: |
+          {
+            echo "## 发布判定"
+            echo ""
+            echo "| 项目 | 值 |"
+            echo "| --- | --- |"
+            echo "| 是否发布 | ${{ steps.bump.outputs.should_release }} |"
+            echo "| 版本 | \`${{ steps.bump.outputs.previous_version }}\` → \`${{ steps.bump.outputs.version }}\` |"
+            echo "| 递增 | ${{ steps.bump.outputs.bump }} |"
+            echo "| 理由 | ${{ steps.bump.outputs.reason }} |"
+            echo "| dry_run | ${{ steps.mode.outputs.dry_run }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # 2) 构建 + 校验 + 发布到 VS Code 市场（OIDC，无需 PAT）
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.should_release == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # Trusted Publishing 用 GitHub OIDC 换 15 分钟临时凭据
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装依赖（根目录 + src-vsc 两套独立依赖树）
+        run: |
+          npm ci
+          npm --prefix src-vsc ci
+
+      - name: 写入版本号（三处清单一次改完）
+        run: node scripts/version.mjs set "${{ needs.prepare.outputs.version }}"
+
+      - name: 构建扩展
+        run: npm run build:vsc
+
+      - name: 打包 VSIX
+        run: |
+          mkdir -p out
+          cd dist-vsc
+          npx --yes @vscode/vsce package --githubBranch master \
+            -o "$GITHUB_WORKSPACE/out/vsc-postman-${{ needs.prepare.outputs.version }}.vsix"
+
+      - name: 打包 Edge 扩展（人工上传用）
+        run: |
+          npm run build:chrome
+          node scripts/package-chrome.mjs
+
+      - name: 校验产物
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          VSIX="out/vsc-postman-${VERSION}.vsix"
+          ZIP="out/vsc-postman-edge-${VERSION}.zip"
+
+          test -f "$VSIX" || { echo "::error::缺少 $VSIX"; exit 1; }
+          test -f "$ZIP" || { echo "::error::缺少 $ZIP"; exit 1; }
+
+          # 版本必须三处一致，否则市场会以「版本已存在」拒收
+          node -e '
+            const { execFileSync } = require("node:child_process");
+            const version = process.env.VERSION;
+            const read = (args) => execFileSync("unzip", args, { encoding: "utf8" });
+            const vsixPkg = JSON.parse(read(["-p", `out/vsc-postman-${version}.vsix`, "extension/package.json"]));
+            const zipManifest = JSON.parse(read(["-p", `out/vsc-postman-edge-${version}.zip`, "manifest.json"]));
+            if (vsixPkg.version !== version) throw new Error(`vsix 版本 ${vsixPkg.version} != ${version}`);
+            if (zipManifest.version !== version) throw new Error(`zip 版本 ${zipManifest.version} != ${version}`);
+            console.log("版本一致：", version);
+          '
+
+          # 市场页不解析相对路径，README 里不能留相对图片
+          if unzip -p "$VSIX" extension/readme.md | grep -qE '!\[[^]]*\]\(\./'; then
+            echo "::error::VSIX 内的 README 含相对图片路径，Marketplace 会裂图"
+            exit 1
+          fi
+
+          # zip 必须平铺（manifest.json 在根目录），否则 Edge 拒收
+          unzip -Z1 "$ZIP" | grep -qx 'manifest.json' || { echo "::error::zip 根目录没有 manifest.json"; exit 1; }
+
+          echo "✅ 产物校验通过"
+          ls -lh out
+
+      - name: 发布到 VS Code Marketplace
+        if: needs.prepare.outputs.dry_run == 'false' && vars.VSC_PUBLISH != 'false'
+        run: |
+          set -euo pipefail
+          cd dist-vsc
+          npx --yes @vscode/vsce publish --oidc \
+            --packagePath "$GITHUB_WORKSPACE/out/vsc-postman-${{ needs.prepare.outputs.version }}.vsix"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-assets
+          path: out/*
+          retention-days: 14
+
+  # 3) 回写版本号 + 打 tag + 建 Release（发布成功后才落章，失败可重跑）
+  #    Release 附件里的 zip 就是 Edge 市场要上传的文件。
+  tag:
+    needs: [prepare, build]
+    if: |
+      always()
+      && needs.prepare.outputs.should_release == 'true'
+      && needs.prepare.outputs.dry_run == 'false'
+      && needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-assets
+          path: out
+
+      - name: 重新生成变更摘要
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          node scripts/release-bump.mjs --bump "${{ inputs.bump || 'auto' }}" --version "$VERSION" > /dev/null
+          printf '\n---\n\n**Edge 上架**：从本 Release 下载 `vsc-postman-edge-%s.zip`，到 Partner Center → Packages 上传并 Publish（约 2 分钟）。\n' \
+            "$VERSION" >> release-notes.md
+
+      - name: 提交版本号并打 tag
+        id: commit
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          node scripts/version.mjs set "$VERSION"
+          if git diff --quiet; then
+            echo "版本号已是 $VERSION，跳过提交"
+          else
+            git add package.json src-vsc/package.json src-chrome/manifest.json package-lock.json
+            git commit -m "chore(release): v$VERSION [skip ci]"
+          fi
+
+          TAG="v$VERSION"
+          git tag -f -a "$TAG" -m "$TAG"
+
+          # master 可能开了分支保护：推不上去就退化成「只打 tag」，发布本身不受影响。
+          if git push origin HEAD:master; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::无法推送版本提交（master 可能有分支保护），改为只在远端打 tag"
+            git tag -f -a "$TAG" -m "$TAG" origin/master
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          # 幂等：失败重跑时远端 tag 已经存在，不重复推（推了会 non-fast-forward 直接失败）
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" > /dev/null 2>&1; then
+            echo "远端已有 $TAG，跳过推送"
+          else
+            git push origin "$TAG"
+          fi
+
+      - name: 创建或更新 GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          # 幂等：重跑时 Release 可能已存在，改成覆盖附件 + 更新说明
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            gh release upload "v$VERSION" out/*.vsix out/*.zip --clobber
+            gh release edit "v$VERSION" --notes-file release-notes.md
+          else
+            gh release create "v$VERSION" \
+              --title "v$VERSION" \
+              --notes-file release-notes.md \
+              out/*.vsix out/*.zip
+          fi
+
+      - name: 写入 job summary
+        if: always()
+        run: |
+          {
+            echo "## 发布完成"
+            echo ""
+            echo "- 版本：\`v${{ needs.prepare.outputs.version }}\`（${{ needs.prepare.outputs.reason }}）"
+            echo "- VS Code Marketplace：已提交，通常几分钟内可见"
+            echo "- Edge Add-ons：**需人工上传** —— 从本 Release 下载 \`vsc-postman-edge-${{ needs.prepare.outputs.version }}.zip\`，"
+            echo "  到 [Partner Center](https://partner.microsoft.com/dashboard/microsoftedge/public/login) 的 Packages 页上传并 Publish"
+          } >> "$GITHUB_STEP_SUMMARY"

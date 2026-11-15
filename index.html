@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Vite + React + TypeScript 的 HTTP 接口调试工作台" />
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <title>vsc-postman</title>
+    <script>
+      // 样式加载前定主题，减少首屏闪烁。
+      ;(function () {
+        try {
+          var stored = localStorage.getItem('vsc-postman:theme')
+          var dark =
+            stored === 'dark' || stored === 'light'
+              ? stored === 'dark'
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+          var root = document.documentElement
+          root.classList.toggle('dark', dark)
+          root.style.colorScheme = dark ? 'dark' : 'light'
+          var meta = document.querySelector('meta[name="theme-color"]')
+          if (meta) meta.setAttribute('content', dark ? '#191919' : '#ffffff')
+        } catch (e) {
+          // 忽略：后续 initializeTheme 兜底
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

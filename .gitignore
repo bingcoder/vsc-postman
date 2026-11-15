@@ -1,2 +1,46 @@
-node_modules
+# Dependencies
+node_modules/
+.npm-cache/
+
+# Build output
+dist/
+dist-ssr/
+dist-vsc/
+dist-chrome/
+
+# Environment files (keep the example)
+.env
+.env.*
+!.env.example
+*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# Editor and OS files
 .DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# 内部文档（含本机路径等过程信息，不对外发布）
+docs/internal/
+
+# 打包产物
+*.vsix
+vsc-postman-chrome-*.zip
+vsc-postman-edge-*.zip
+out/
+release-notes.md
