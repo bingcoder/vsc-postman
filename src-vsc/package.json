@@ -2,7 +2,7 @@
   "name": "vsc-postman",
   "displayName": "vsc-postman",
   "description": "%extension.description%",
-  "version": "3.1.0",
+  "version": "3.1.1",
   "publisher": "breaking-point",
   "license": "MIT",
   "repository": {
