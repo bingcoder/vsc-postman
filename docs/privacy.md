@@ -1,6 +1,6 @@
 # 隐私与数据处理说明
 
-- **适用版本**：vsc-postman `0.1.1`
+- **适用版本**：vsc-postman `2.0` 及以后（VS Code 扩展、Edge / Chrome 扩展、Web 版共用同一份实现）
 - **适用范围**：VS Code 扩展、Edge / Chrome 扩展、Web 版
 - **最后更新**：2026-11-12
 

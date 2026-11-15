@@ -4,16 +4,25 @@ Partner Center 的表单字段长期不可复用于仓库，因此把最终文�
 
 ## 0. 提交前必须齐全的素材
 
-| 素材             | 规格                              | 现状                                                    |
-| ---------------- | --------------------------------- | ------------------------------------------------------- |
-| 扩展 Logo        | 1:1，推荐 300×300，最小 128×128   | ⚠️ 现有 `public/icon.png` 为 200×200，需重出 300/512    |
-| 截图             | 640×480 或 1280×800，最多 6 张    | ⚠️ 目录 `docs/preview/` 为空，需补                      |
-| 小促销图（可选） | 440×280                           | 待补                                                    |
-| 大促销图（可选） | 1400×560                          | 待补                                                    |
-| 打包 zip         | `manifest.json` 必须在 zip 根目录 | 待 `scripts/package-chrome.mjs`                         |
-| 隐私政策 URL     | 可公开访问                        | 待托管 `docs/privacy.md`（GitHub Pages / 仓库页面均可） |
+| 素材             | 规格                              | 现状                                                               |
+| ---------------- | --------------------------------- | ------------------------------------------------------------------ |
+| 扩展 Logo        | 1:1，推荐 300×300，最小 128×128   | ⚠️ 现有 `public/icon.png` 为 200×200，需重出 300/512               |
+| 截图             | 640×480 或 1280×800，最多 6 张    | ✅ 已备 2 张，见下表                                               |
+| 小促销图（可选） | 440×280                           | 待补                                                               |
+| 大促销图（可选） | 1400×560                          | 待补                                                               |
+| 打包 zip         | `manifest.json` 必须在 zip 根目录 | ✅ `npm run package:chrome` 产出并校验（当前 360 KB，解包 1.1 MB） |
+| 隐私政策 URL     | 可公开访问                        | ✅ 直接用仓库里的 `docs/privacy.md` 页面（见 §6）                  |
 
-建议截图组（1280×800）：① 请求编辑 + 响应 JSON ② SSE 事件流分栏 ③ 侧边栏集合与历史 ④ 设置页（体现本地存储与历史上限）。
+**可直接上传的截图**（Partner Center 只收 640×480 或 1280×800；源图 `2560×1600` 本身就是 16:10，按 50% 等比缩到 1280×800，无裁切、无补白）：
+
+| 文件                                                      | 尺寸     | 内容                           |
+| --------------------------------------------------------- | -------- | ------------------------------ |
+| `docs/preview/store/vsc-postman-store-light-1280x800.png` | 1280×800 | 请求编辑页，浅色主题、英文界面 |
+| `docs/preview/store/vsc-postman-store-dark-1280x800.png`  | 1280×800 | 请求编辑页，深色主题、中文界面 |
+
+原始整图（README 展示用，`2560×1600`）：`docs/preview/vsc-postman-preview-light.png`、`docs/preview/vsc-postman-preview-dark.png`。三处 README 直接引用这两张原图，商店上传用上面两张缩放版。
+
+建议补充的截图（1280×800）：① 响应面板展开后的 JSON ② SSE 事件流分栏 ③ 侧边栏里有真实集合与历史 ④ 设置页（体现本地存储与历史上限）。当前 2 张都是新建请求的空状态，功能展示偏弱。
 
 ## 1. 商店名称与短描述
 
@@ -95,14 +104,14 @@ http client, rest client, api testing, postman alternative, sse, no login, offli
 
 ## 5. Properties
 
-| 字段            | 值                                            |
-| --------------- | --------------------------------------------- |
-| Category        | Developer tools                               |
+| 字段            | 值                                                |
+| --------------- | ------------------------------------------------- |
+| Category        | Developer tools                                   |
 | Website         | `https://github.com/bingcoder/vsc-postman`        |
 | Support contact | `https://github.com/bingcoder/vsc-postman/issues` |
-| Mature content  | 否                                            |
-| Visibility      | Public                                        |
-| Markets         | 全部                                          |
+| Mature content  | 否                                                |
+| Visibility      | Public                                            |
+| Markets         | 全部                                              |
 
 ## 6. Privacy 页逐项答案
 
@@ -129,7 +138,7 @@ content scripts, does not read page content, and does not issue background or pe
 网页浏览历史、用户活动、网站内容）。勾选并确认「I certify that the following disclosures are true」。
 若表单强制要求至少选择一项，请勿臆造：先核对本扩展是否真的读取了对应数据（当前实现不会）。
 
-**Privacy policy URL** — 托管后的 `docs/privacy.md` 地址（如 `https://bingcoder.github.io/vsc-postman/privacy`）。
+**Privacy policy URL** — `https://github.com/bingcoder/vsc-postman/blob/master/docs/privacy.md`（GitHub 直接渲染该 Markdown，公开可访问；改文案只需改这一个文件）。
 
 ## 7. Notes for certification
 

@@ -13,9 +13,13 @@
 
 > 当前版本 `2.0.0`。VS Code 扩展沿用既有扩展 ID `breaking-point.vsc-postman`（老用户原地升级）；Chrome/Edge 版本本期不发布，仍为本地加载。安装步骤见[安装](#安装)。
 
-<!-- 截图：P3 补齐后放开（1280×800）
-![vsc-postman 请求页](./docs/preview/overview-light.png)
--->
+## 界面预览
+
+![vsc-postman 请求页：左侧集合与历史，右侧请求编辑器（浅色主题，英文界面）](./docs/preview/vsc-postman-preview-light.png)
+
+![vsc-postman 请求页（深色主题，中文界面）](./docs/preview/vsc-postman-preview-dark.png)
+
+左边是集合与历史，右边是请求编辑器：选方法、填 URL、切 `Params / Headers / Body`，发送后响应在下方展开。浅色 / 深色跟随宿主主题，界面中英文可切换。上面两张是同一页面的浅色英文与深色中文状态（都是新建请求、尚未发送的初始界面）。
 
 ## 为什么是它
 
@@ -108,6 +112,18 @@ npm run dev
 
 打开终端输出的地址（默认 `http://localhost:5173/#/`）。开发环境通过 Vite 插件 `/__http-proxy` 转发请求以绕开 CORS，该中间件只监听本机、不进入生产构建。
 
+## 体积
+
+三个宿主都随包分发完整前端，不依赖 CDN、不加载远程脚本，装好断网也能用。
+
+| 产物                   | 下载体积   | 解包后 | 文件数 | 内容                                          |
+| ---------------------- | ---------- | ------ | ------ | --------------------------------------------- |
+| VS Code 扩展 `.vsix`   | **398 KB** | 1.3 MB | 29     | 扩展宿主 JS + 同一份 Webview 前端             |
+| Edge / Chrome 扩展 zip | **360 KB** | 1.1 MB | 8      | MV3 清单 + Service Worker + 同一份前端 bundle |
+| 共享 Web UI `dist/`    | —          | 1.1 MB | 7      | 同时作为 VS Code Webview 的 `media/` 资源     |
+
+体积几乎都花在一个前端 bundle 上：约 1.03 MB 的 JS（gzip 332 KB）加 56 KB 的 CSS（gzip 9.8 KB），来自 React、CodeMirror 编辑器与 Radix / Base UI 组件运行时。包里没有字体文件、没有截图素材（图标仅 12 KB）、没有 sourcemap，也没有任何运行时的二次拉取——这正是[隐私与数据](#隐私与数据)里「不加载远程代码」的物质基础。
+
 ## 构建与产物
 
 ```bash
@@ -115,9 +131,17 @@ npm run build          # 共享 Web UI → dist/（同时作为 VS Code Webview 
 npm run build:chrome   # Edge/Chrome MV3 → dist-chrome/
 npm run build:vsc      # 完整 VS Code 扩展根目录 → dist-vsc/
 npm run package:vsix   # 打包 vsc-postman-<version>.vsix
+npm run package:chrome # 打包 out/vsc-postman-edge-<version>.zip（校验 zip 结构）
+npm run release:bump   # 按提交类型算出下一个版本，并生成 release-notes.md
 ```
 
 产物使用相对路径（`base: './'`）与 `HashRouter`，适配无 History API 的 Webview / 扩展容器。
+
+## 发布
+
+推送 `master` 即触发 [release 流水线](./.github/workflows/release.yml)：按语义化提交决定要不要发版 → 同步三处版本号 → 构建校验 → `vsce publish --oidc` 发 VS Code 市场（无需 PAT）→ 打 tag 并生成 Release。
+
+Edge Add-ons 不做自动提交：CI 会把校验过的 `vsc-postman-edge-<version>.zip` 挂到 Release，到 Partner Center 上传即可（商店首次上架、元数据修改本来就只能网页操作）。完整说明、凭据配置与排错表见 [docs/release-plan.md](./docs/release-plan.md)。
 
 ## 已知限制
 
@@ -139,9 +163,10 @@ src-vsc/        VS Code 扩展宿主：Webview、RPC、globalState 工作区模�
 vite-plugins/   仅开发环境使用的 Vite 插件（/__http-proxy）
 scripts/        构建与冒烟测试脚本
 docs/           架构、隐私说明、商店上架文案
+docs/preview/   README 与商店页截图（原图 2560×1600；store/ 下是 1280×800 上传版）
 ```
 
-三份 README 的分工：根 README 面向仓库访客与贡献者；`src-vsc/README.md` 打包为 `dist-vsc/README.md`，就是 Marketplace 页面正文；`src-chrome/README.md` 随 `dist-chrome/` 打进商店 zip。改文案时注意各自约束（市场页不能用相对链接、不能有 SVG）。
+三份 README 的分工：根 README 面向仓库访客与贡献者；`src-vsc/README.md` 打包为 `dist-vsc/README.md`，就是 Marketplace 页面正文；`src-chrome/README.md` 随 `dist-chrome/` 打进商店 zip。改文案时注意各自约束（市场页不能用相对链接、不能有 SVG）：根 README 的截图用 `./docs/preview/` 相对路径，两份市场 README 只能用 GitHub raw 绝对地址，换图时同一组文件要改两处引用形式。
 
 切换运行时只改两个组合根：`src/services/vsc-postman/index.ts`（请求通道）与 `src/services/storage/index.ts`（持久化），页面代码不感知环境。协议细节见 [docs/architecture.md](./docs/architecture.md)。
 
@@ -158,7 +183,7 @@ docs/           架构、隐私说明、商店上架文案
 - [docs/architecture.md](./docs/architecture.md) — 分层、传输契约、代理协议、Webview 与 MV3 接入
 - [docs/privacy.md](./docs/privacy.md) — 隐私与数据处理说明（可直接作为商店 Privacy Policy）
 - [docs/store-listing-edge.md](./docs/store-listing-edge.md) — Edge Add-ons 上架表单文案与素材清单
-- [docs/release-plan.md](./docs/release-plan.md) — 发布自动化方案
+- [docs/release-plan.md](./docs/release-plan.md) — 发布流水线：版本判定、OIDC 发布、Edge 手动上传、排错
 - [src-vsc/README.md](./src-vsc/README.md) — VS Code 扩展说明（打包后即市场页正文）
 - [src-chrome/README.md](./src-chrome/README.md) — Edge / Chrome 扩展说明（随 zip 发布）
 - [CHANGELOG.md](./CHANGELOG.md)
